@@ -1,0 +1,130 @@
+# 4차 프로젝트 — 팀원용 작업 매뉴얼
+
+> 이 문서는 **로컬 PC에서** 진행하는 작업만 다룹니다. EC2 서버 설정은 팀장이 별도로 관리하며, 팀원은 EC2에 직접 접속할 필요가 없습니다.
+
+```
+당신의 PC (이 매뉴얼)              GitHub                    EC2 (팀장 관리)
+──────────────────────           ──────────                ──────────────
+코드 작성 → 로컬 테스트   →   feature 브랜치 push   →   (팀장이 main 병합)
+                                                              ↓
+                                                    자동 배포 (GitHub Actions)
+```
+
+---
+
+## 0. 사전 준비물
+
+- **Docker Desktop** 설치 및 실행 중인 상태
+- **Git** 설치
+- 저장소 접근 권한 (GitHub `SKN29-4th-4Team` 콜라보레이터로 초대받아야 함)
+
+---
+
+## 1. 저장소 클론
+
+```bash
+cd <원하는 작업 폴더>
+git clone https://github.com/Somber-7/SKN29-4th-4Team.git
+cd SKN29-4th-4Team
+```
+
+---
+
+## 2. 로컬 환경 파일 준비
+
+`.env.local.example`을 복사해서 `.env.local`을 만듭니다 (실제 값 입력, 이 파일은 git에 올라가지 않음):
+
+```bash
+cp .env.local.example .env.local
+```
+
+`OPENAI_API_KEY` 등은 팀 채널에서 공유받은 값을 넣으세요. 나머지(`DB_*`, `NEO4J_*`)는 예시 파일 그대로 두면 됩니다 (로컬 전용 값이라 다 같아도 상관없음).
+
+---
+
+## 3. 로컬에서 전체 스택 실행
+
+```bash
+docker compose -f docker-compose.local.yml up --build
+```
+
+처음 실행은 이미지 빌드 때문에 몇 분 걸립니다. 아래처럼 여러 컨테이너가 뜨는 게 보이면 정상입니다:
+
+```
+postgres-local  ... Up
+neo4j           ... Up
+django          ... Up
+fastapi         ... Up
+nginx           ... Up
+```
+
+**최초 1회만** 실행 (새 터미널에서, 위 명령이 계속 켜져 있는 상태로):
+
+```bash
+docker compose -f docker-compose.local.yml exec django python manage.py migrate
+```
+
+---
+
+## 4. 확인
+
+브라우저에서 `http://localhost/` 접속 → `{"status": "ok", "service": "django"}` 응답이 보이면 성공.
+
+```bash
+curl http://localhost/api/health   # FastAPI 응답 확인
+```
+
+Neo4j에 그래프 데이터를 넣고 싶다면 (한자-오행 관계 조회 기능 테스트 시 필요):
+
+```bash
+docker compose -f docker-compose.local.yml exec fastapi python src_naming/graph/index_hanja_neo4j.py --execute
+```
+
+---
+
+## 5. 작업 방식
+
+```bash
+git checkout -b feature/내작업이름
+# 코드 수정
+# 위 3번 명령으로 로컬에서 다시 테스트 (변경사항 반영하려면 --build 다시)
+git add .
+git commit -m "작업 내용"
+git push origin feature/내작업이름
+```
+
+이후 GitHub에서 **Pull Request** 생성 → 팀장이 리뷰 후 `main`에 병합 → 자동으로 EC2에 반영됩니다.
+
+---
+
+## 6. 코드 작업 위치
+
+| 담당 | 작업 위치 |
+|------|----------|
+| Django 화면/기능 (회원가입, 작명 폼, 이력 조회 등) | `webapp/` — `naming` 앱은 아직 없으므로 `python manage.py startapp naming`으로 새로 만든 뒤 시작 |
+| FastAPI 응답 형식/기능 추가 | `fastapi_app/main.py` |
+| 화면 스타일/레이아웃 | `webapp/naming/static/`, `webapp/naming/templates/` (앱 생성 후) |
+| Nginx 라우팅 | `deploy/nginx/nginx.conf` |
+
+`naming` 앱을 새로 만들 때는 `webapp/config/settings.py`의 `INSTALLED_APPS`에 `'naming'`을 추가해야 합니다 (주석으로 표시되어 있음).
+
+---
+
+## 7. 종료
+
+```bash
+docker compose -f docker-compose.local.yml down
+```
+
+컨테이너만 내려가고, DB 데이터(볼륨)는 남아있어서 다음에 다시 `up` 하면 이어서 쓸 수 있습니다. 완전히 초기화하고 싶으면 `down -v` (볼륨까지 삭제).
+
+---
+
+## 8. 트러블슈팅
+
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| `docker compose` 명령 안 먹힘 | Docker Desktop 꺼짐 | Docker Desktop 실행 확인 |
+| Django가 DB 연결 실패 | `.env.local` 안 만듦 또는 `migrate` 안 함 | 2번, 3번 단계 다시 확인 |
+| 포트 충돌 (80, 5432 등) | 다른 프로그램이 이미 사용 중 | 해당 프로그램 종료하거나 `docker-compose.local.yml`의 포트 번호 수정 |
+| 코드 수정했는데 반영 안 됨 | 이미지 재빌드 안 함 | `docker compose -f docker-compose.local.yml up --build` 다시 |

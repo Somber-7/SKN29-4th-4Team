@@ -1,0 +1,44 @@
+services:
+  nginx:
+    build: ./deploy/nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - django
+      - fastapi
+    volumes:
+      - static_volume:/static
+
+  django:
+    build:
+      context: ./webapp
+    env_file: .env
+    volumes:
+      - static_volume:/app/static
+    expose:
+      - "8000"
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.fastapi
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "8001"
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+    volumes:
+      - neo4j_data:/data
+    expose:
+      - "7474"
+      - "7687"
+
+volumes:
+  static_volume:
+  neo4j_data:

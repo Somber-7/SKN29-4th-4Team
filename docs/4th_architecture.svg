@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="700" viewBox="0 0 920 700" font-family="Segoe UI, Malgun Gothic, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4b5563"/>
+    </marker>
+  </defs>
+
+  <rect width="920" height="700" fill="#ffffff"/>
+
+  <!-- 사용자 브라우저 -->
+  <rect x="380" y="16" width="160" height="44" rx="8" fill="#e5e7eb" stroke="#6b7280" stroke-width="1.5"/>
+  <text x="460" y="43" text-anchor="middle" font-size="15" fill="#111827">사용자 브라우저</text>
+
+  <line x1="460" y1="60" x2="460" y2="92" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="472" y="80" font-size="12" fill="#4b5563">HTTPS</text>
+
+  <!-- AWS EC2 outer box -->
+  <rect x="40" y="94" width="840" height="420" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="60" y="118" font-size="14" font-weight="bold" fill="#334155">AWS EC2 — Docker Compose (docker-compose.4th.yml)</text>
+
+  <!-- Nginx (Docker) -->
+  <rect x="360" y="130" width="200" height="60" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="460" y="152" text-anchor="middle" font-size="14" font-weight="bold" fill="#14532d">Nginx</text>
+  <text x="460" y="170" text-anchor="middle" font-size="11" fill="#14532d">Docker · 80/443 호스트 퍼블리시</text>
+  <text x="460" y="184" text-anchor="middle" font-size="10" fill="#14532d">유일하게 외부 노출되는 컨테이너</text>
+
+  <!-- branch labels -->
+  <line x1="420" y1="190" x2="260" y2="238" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="300" y="218" font-size="12" fill="#4b5563">location /</text>
+
+  <line x1="500" y1="190" x2="660" y2="238" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="600" y="218" font-size="12" fill="#4b5563">location /api/</text>
+
+  <!-- Django (Docker) -->
+  <rect x="150" y="240" width="220" height="76" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="260" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="#14532d">Django (Gunicorn)</text>
+  <text x="260" y="280" text-anchor="middle" font-size="11" fill="#14532d">Docker · 내부 네트워크 8000</text>
+  <text x="260" y="296" text-anchor="middle" font-size="11" fill="#14532d">MVT / ORM / 인증</text>
+  <text x="260" y="310" text-anchor="middle" font-size="11" fill="#14532d">회원가입 · 로그인 · 작명 이력</text>
+
+  <!-- FastAPI (Docker) -->
+  <rect x="560" y="240" width="240" height="76" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="680" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="#14532d">FastAPI</text>
+  <text x="680" y="280" text-anchor="middle" font-size="11" fill="#14532d">Docker · 내부 네트워크 8001</text>
+  <text x="680" y="296" text-anchor="middle" font-size="11" fill="#14532d">naming_graph.py 래핑 · POST /ask</text>
+  <text x="680" y="310" text-anchor="middle" font-size="11" fill="#14532d">ChromaDB 임베디드(PersistentClient)</text>
+
+  <line x1="680" y1="316" x2="680" y2="340" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Neo4j (Docker) -->
+  <rect x="560" y="342" width="240" height="52" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="680" y="364" text-anchor="middle" font-size="14" font-weight="bold" fill="#14532d">Neo4j</text>
+  <text x="680" y="382" text-anchor="middle" font-size="11" fill="#14532d">Docker · 한자-오행 관계 그래프</text>
+
+  <!-- legend -->
+  <rect x="60" y="440" width="18" height="18" fill="#dcfce7" stroke="#15803d" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="86" y="454" font-size="12" fill="#334155">Docker 컨테이너 (전체 서비스, 하나의 Compose 네트워크)</text>
+
+  <!-- Django -> RDS / S3 -->
+  <line x1="260" y1="316" x2="260" y2="440" stroke="#4b5563" stroke-width="1.5"/>
+  <line x1="260" y1="440" x2="180" y2="590" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="260" y1="440" x2="360" y2="590" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- AWS RDS -->
+  <rect x="80" y="596" width="200" height="64" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="1.5"/>
+  <text x="180" y="620" text-anchor="middle" font-size="14" font-weight="bold" fill="#78350f">AWS RDS</text>
+  <text x="180" y="638" text-anchor="middle" font-size="11" fill="#78350f">PostgreSQL · 사용자 DB</text>
+  <text x="180" y="653" text-anchor="middle" font-size="10" fill="#78350f">보안 그룹: EC2에서만 5432 허용</text>
+
+  <!-- AWS S3 -->
+  <rect x="320" y="596" width="200" height="64" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="1.5"/>
+  <text x="420" y="620" text-anchor="middle" font-size="14" font-weight="bold" fill="#78350f">AWS S3</text>
+  <text x="420" y="638" text-anchor="middle" font-size="11" fill="#78350f">정적 파일 / 미디어</text>
+  <text x="420" y="653" text-anchor="middle" font-size="10" fill="#78350f">django-storages 연동</text>
+
+  <!-- Security group note -->
+  <rect x="620" y="596" width="260" height="64" rx="8" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+  <text x="750" y="618" text-anchor="middle" font-size="12" font-weight="bold" fill="#7f1d1d">보안 그룹 (인바운드)</text>
+  <text x="750" y="635" text-anchor="middle" font-size="11" fill="#7f1d1d">22(내 IP) · 80/443(전체)만 오픈</text>
+  <text x="750" y="650" text-anchor="middle" font-size="11" fill="#7f1d1d">Django·FastAPI·Neo4j 포트 미오픈</text>
+
+  <!-- CI/CD note -->
+  <rect x="620" y="130" width="240" height="60" rx="8" fill="#ede9fe" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="740" y="150" text-anchor="middle" font-size="12" font-weight="bold" fill="#4c1d95">GitHub Actions</text>
+  <text x="740" y="166" text-anchor="middle" font-size="10" fill="#4c1d95">main 병합 → SSH 접속 →</text>
+  <text x="740" y="180" text-anchor="middle" font-size="10" fill="#4c1d95">git pull + docker compose up -d</text>
+</svg>

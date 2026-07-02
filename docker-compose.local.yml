@@ -1,0 +1,57 @@
+services:
+  postgres-local:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: namingdb
+      POSTGRES_USER: namingadmin
+      POSTGRES_PASSWORD: localtest1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+
+  nginx:
+    build: ./deploy/nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - django
+      - fastapi
+    volumes:
+      - static_volume:/static
+
+  django:
+    build:
+      context: ./webapp
+    env_file: .env.local
+    depends_on:
+      - postgres-local
+    volumes:
+      - static_volume:/app/static
+    expose:
+      - "8000"
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.fastapi
+    env_file: .env.local
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "8001"
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+    volumes:
+      - neo4j_local_data:/data
+    expose:
+      - "7474"
+      - "7687"
+
+volumes:
+  postgres_local_data:
+  neo4j_local_data:
+  static_volume:
