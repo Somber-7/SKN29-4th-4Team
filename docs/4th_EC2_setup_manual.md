@@ -447,24 +447,8 @@ git clone https://github.com/Somber-7/SKN29-4th-4Team.git
 cd SKN29-4th-4Team
 ls webapp fastapi_app deploy docker-compose.4th.yml data
 
-cat > .env <<'EOF'
-DB_NAME=namingdb
-DB_USER=namingadmin
-DB_PASSWORD=<비밀번호>
-DB_HOST=<RDS 엔드포인트>.rds.amazonaws.com
-DB_SSL_REQUIRE=true
-NEO4J_URI=bolt://neo4j:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=<비밀번호>
-NEO4J_DATABASE=neo4j
-OPENAI_API_KEY=<OpenAI API 키>
-LAW_API_KEY=<국가법령정보 API 키>
-URIMALSAM_API_KEY=<우리말샘 API 키>
-USE_S3=true
-AWS_ACCESS_KEY_ID=<IAM 액세스 키>
-AWS_SECRET_ACCESS_KEY=<IAM 시크릿 키>
-AWS_STORAGE_BUCKET_NAME=<버킷명>
-EOF
+cp .env.example .env
+nano .env   # <> 부분을 실제 값으로 채우기 (RDS 엔드포인트, 비밀번호, API 키, IAM 액세스 키 등)
 
 docker compose -f docker-compose.4th.yml up --build -d
 docker compose -f docker-compose.4th.yml ps
