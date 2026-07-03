@@ -52,7 +52,7 @@ async def startup():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "deploy_test": "auto-deploy-verified"}
+    return {"status": "ok", "deploy_test": "auto-deploy-verified-2"}
 
 
 @app.post("/ask", response_model=AskResponse)
