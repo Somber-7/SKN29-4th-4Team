@@ -11,7 +11,9 @@ services:
       - postgres_local_data:/var/lib/postgresql/data
 
   nginx:
-    build: ./deploy/nginx
+    build:
+      context: ./deploy/nginx
+      dockerfile: Dockerfile.local
     ports:
       - "80:80"
     depends_on:
