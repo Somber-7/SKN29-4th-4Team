@@ -76,7 +76,7 @@
   <!-- Security group note -->
   <rect x="620" y="596" width="260" height="64" rx="8" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
   <text x="750" y="618" text-anchor="middle" font-size="12" font-weight="bold" fill="#7f1d1d">보안 그룹 (인바운드)</text>
-  <text x="750" y="635" text-anchor="middle" font-size="11" fill="#7f1d1d">22(내 IP) · 80/443(전체)만 오픈</text>
+  <text x="750" y="635" text-anchor="middle" font-size="11" fill="#7f1d1d">22·80·443 전체 개방 (22는 Actions 배포용)</text>
   <text x="750" y="650" text-anchor="middle" font-size="11" fill="#7f1d1d">Django·FastAPI·Neo4j 포트 미오픈</text>
 
   <!-- CI/CD note -->
