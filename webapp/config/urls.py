@@ -26,4 +26,6 @@ def health(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', health),
+    # 실제 작명 홈페이지 뷰가 만들어지면 위 health를 대체하거나
+    # path('', include('naming.urls')) 로 바꾸면 됨
 ]

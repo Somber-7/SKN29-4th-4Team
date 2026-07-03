@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'naming' 앱은 프론트 연동 시 추가
+    'naming',
 ]
 
 MIDDLEWARE = [
