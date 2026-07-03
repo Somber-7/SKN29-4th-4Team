@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 WORKDIR /app
 COPY requirements-fastapi.txt .
+# EC2는 GPU가 없으므로 torch를 CPU 전용 빌드로 먼저 설치 (CUDA 패키지 1.5GB+ 절약)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements-fastapi.txt
 COPY fastapi_app/ ./fastapi_app/
 COPY src/ ./src/
