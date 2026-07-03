@@ -9,6 +9,7 @@ services:
       - fastapi
     volumes:
       - static_volume:/static
+      - /etc/letsencrypt:/etc/letsencrypt:ro
 
   django:
     build:
