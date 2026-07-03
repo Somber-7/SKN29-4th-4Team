@@ -219,8 +219,8 @@ def _stub_fastmcp():
     sys.modules["fastmcp"] = mod
 
 _stub_fastmcp()
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src_naming", "mcp"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src_naming", "graph"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "mcp"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "graph"))
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -307,7 +307,7 @@ WORKDIR /app
 COPY requirements-fastapi.txt .
 RUN pip install --no-cache-dir -r requirements-fastapi.txt
 COPY fastapi_app/ ./fastapi_app/
-COPY src/ ./src_naming/
+COPY src/ ./src/
 COPY data/ ./data/
 CMD ["uvicorn", "fastapi_app.main:app", "--host", "0.0.0.0", "--port", "8001"]
 ```
@@ -458,8 +458,8 @@ docker compose -f docker-compose.4th.yml exec django python manage.py collectsta
 
 # Neo4j는 컨테이너를 새로 띄운 것이라 최초엔 빈 DB — 3차 프로젝트의 인덱싱 스크립트로 데이터 적재
 # (fastapi 컨테이너에 이미 neo4j 패키지 + src/graph + NEO4J_URI 등 env가 있으므로 그대로 실행)
-docker compose -f docker-compose.4th.yml exec fastapi python src_naming/graph/index_hanja_neo4j.py --check-connection
-docker compose -f docker-compose.4th.yml exec fastapi python src_naming/graph/index_hanja_neo4j.py --execute
+docker compose -f docker-compose.4th.yml exec fastapi python src/graph/index_hanja_neo4j.py --check-connection
+docker compose -f docker-compose.4th.yml exec fastapi python src/graph/index_hanja_neo4j.py --execute
 
 curl http://127.0.0.1/
 curl http://127.0.0.1/api/health
