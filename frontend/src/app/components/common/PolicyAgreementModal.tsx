@@ -108,4 +108,18 @@ export function PolicyAgreementModal({
           <div className="flex gap-2 flex-shrink-0">
             <GhostButton onClick={onClose} className="px-4 py-2.5 text-xs">
               닫기
-            
+            </GhostButton>
+            <PrimaryButton
+              onClick={onAgree}
+              disabled={!reachedEnd}
+              className="px-4 py-2.5 text-xs whitespace-nowrap"
+            >
+              동의하고 닫기
+            </PrimaryButton>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}

@@ -195,12 +195,12 @@ const STEPS: StepItem[] = [
     ),
     mockup: (
       <div className="bg-white border-2 border-double border-border-warm rounded-2xl p-5 sm:p-6 shadow-[0_16px_36px_rgba(46,30,8,0.06)] w-full text-left relative overflow-hidden">
-        <div className="absolute top-2.5 right-2.5 w-10 h-10 rounded-full border border-red-500/20 flex items-center justify-center text-[8px] font-bold text-red-500/30 rotate-12 pointer-events-none select-none">
-          명가인증
-        </div>
-        <div className="border-b border-hanji pb-2.5 mb-4">
+        <div className="border-b border-hanji pb-4 mb-4">
           <span className="text-[8px] font-bold tracking-widest text-gold-text uppercase">Myeongga Report</span>
           <h4 className="text-xs font-bold text-foreground mt-0.5 font-sans">명가추천 인증서</h4>
+        </div>
+        <div className="absolute top-3 right-3 w-10 h-10 rounded-full border border-red-500/20 flex items-center justify-center text-[8px] font-bold text-red-500/30 pointer-events-none select-none">
+          명가인증
         </div>
         <div className="text-center my-4">
           <span className="font-hanja text-2xl font-bold tracking-wider text-foreground">金 志 宇</span>

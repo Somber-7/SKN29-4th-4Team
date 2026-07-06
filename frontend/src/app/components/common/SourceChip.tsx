@@ -10,4 +10,9 @@ const SOURCE_STYLES: Record<SourceType, string> = {
 export function SourceChip({ type, label, className = "" }: { type: SourceType; label: string; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-medium border rounded-md tr
+      className={`inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-medium border rounded-md transition-colors ${SOURCE_STYLES[type]} ${className}`}
+    >
+      {label}
+    </span>
+  );
+}

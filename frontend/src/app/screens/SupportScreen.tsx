@@ -123,9 +123,9 @@ function FaqSection({ onGoContact }: { onGoContact: () => void }) {
                 className="border-b-0 px-5 sm:px-6"
               >
                 <AccordionTrigger className="py-5 text-sm sm:text-[15px] font-medium text-foreground hover:no-underline hover:text-primary transition-colors gap-4 text-left focus-visible:ring-1 focus-visible:ring-primary [&>svg]:text-faint">
-                  <span className="flex items-baseline gap-3 min-w-0">
+                  <span className="flex items-center gap-3 min-w-0">
                     <span
-                      className="text-[10px] tracking-[0.18em] text-caption uppercase flex-shrink-0"
+                      className="text-[10px] tracking-[0.18em] text-caption uppercase flex-shrink-0 w-[72px] text-center"
                       aria-hidden="true"
                     >
                       {categoryLabels?.[item.category]}
@@ -450,14 +450,14 @@ function ContactSection({
           </div>
 
           <div>
-            <label className="flex items-start gap-2.5 cursor-pointer group">
+            <label className="flex items-center gap-2.5 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={form.agree}
                 onChange={(e) => set("agree", e.target.checked)}
                 aria-invalid={!!errors.agree}
                 aria-describedby={errors.agree ? "ct-agree-error" : undefined}
-                className="mt-0.5 w-4 h-4 accent-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-4 h-4 accent-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
               <span className="text-xs text-ink leading-relaxed break-keep">
                 문의 처리를 위한 개인정보 수집·이용에 동의합니다.{" "}

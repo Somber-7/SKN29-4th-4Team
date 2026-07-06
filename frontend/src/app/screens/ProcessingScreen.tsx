@@ -171,4 +171,60 @@ export function ProcessingScreen({
                       />
                     )}
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 z-10 transition-all du
+                      className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 z-10 transition-all duration-400 ${
+                        done
+                          ? "bg-primary"
+                          : active
+                            ? "border-2 border-primary bg-white"
+                            : "border border-border bg-white"
+                      }`}
+                    >
+                      {done ? (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path
+                            d="M1 4L3.5 6.5L9 1"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      ) : active ? (
+                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className={`text-sm transition-colors ${
+                          done
+                            ? "text-primary font-medium"
+                            : active
+                              ? "text-foreground font-semibold"
+                              : "text-faint"
+                        }`}
+                      >
+                        {s.label}
+                      </p>
+                      <p
+                        className={`text-xs break-keep leading-relaxed mt-0.5 transition-colors ${
+                          active ? "text-caption" : "text-faint/70"
+                        }`}
+                      >
+                        {s.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 안내문 — 중앙 정렬 대상에서 분리해 화면 하단에 고정, 카드 위/아래 여백을 대칭으로 유지 */}
+      <p className="absolute bottom-6 inset-x-0 z-10 text-center text-[11px] text-hint break-keep px-6">
+        모든 추천에는 대법원 인명용 한자 8,142자와 KCI 학술 문헌 출처가 함께 제공됩니다.
+      </p>
+    </div>
+  );
+}

@@ -711,3 +711,4 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
       )}
     </div>
   );
+}

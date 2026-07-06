@@ -235,7 +235,7 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
 
                 {/* Terms */}
                 <div className="pt-1 space-y-2.5 border-t border-muted">
-                  <div className="flex items-start gap-2.5 pt-3">
+                  <div className="flex items-center gap-2.5 pt-3">
                     <input
                       id="agree-terms"
                       type="checkbox"
@@ -245,7 +245,7 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                         setAgreeTerms(e.target.checked);
                         clearError("agree");
                       }}
-                      className="mt-0.5 w-4 h-4 accent-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-4 h-4 accent-primary disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                     <label htmlFor="agree-terms" className="text-xs text-label leading-relaxed flex-1">
                       <span className="text-primary font-medium">(필수)</span> 이용약관에
@@ -265,7 +265,7 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                     </p>
                   )}
 
-                  <div className="flex items-start gap-2.5">
+                  <div className="flex items-center gap-2.5">
                     <input
                       id="agree-privacy"
                       type="checkbox"
@@ -275,7 +275,7 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                         setAgreePrivacy(e.target.checked);
                         clearError("agree");
                       }}
-                      className="mt-0.5 w-4 h-4 accent-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-4 h-4 accent-primary disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                     <label htmlFor="agree-privacy" className="text-xs text-label leading-relaxed flex-1">
                       <span className="text-primary font-medium">(필수)</span> 개인정보 수집 및

@@ -89,4 +89,21 @@ export function NamingFlowProvider({ children }: { children: ReactNode }) {
     flow,
     request,
     chatQuestion,
-    sub
+    submitRequest,
+    completeProcessing,
+    cancelProcessing,
+    openChat,
+    backToResults,
+    retryFromResults,
+    openHistoryResult,
+    exitFlow,
+  };
+
+  return <NamingFlowContext.Provider value={value}>{children}</NamingFlowContext.Provider>;
+}
+
+export function useNamingFlow(): NamingFlowContextValue {
+  const ctx = useContext(NamingFlowContext);
+  if (!ctx) throw new Error("useNamingFlow는 NamingFlowProvider 내부에서만 사용할 수 있습니다.");
+  return ctx;
+}

@@ -59,7 +59,7 @@ export function InputScreen({ onSubmit }: { onSubmit: (request: NameRequest) => 
                     <TabsContent
                       value="natural"
                       forceMount
-                      className="col-start-1 row-start-1"
+                      className="col-start-1 row-start-1 h-full flex flex-col data-[state=inactive]:!flex"
                       {...(mode !== "natural" ? { inert: "" } : {})}
                     >
                       <NaturalInputForm active={mode === "natural"} onSubmit={onSubmit} />
@@ -68,7 +68,7 @@ export function InputScreen({ onSubmit }: { onSubmit: (request: NameRequest) => 
                     <TabsContent
                       value="structured"
                       forceMount
-                      className="col-start-1 row-start-1"
+                      className="col-start-1 row-start-1 h-full flex flex-col data-[state=inactive]:!flex"
                       {...(mode !== "structured" ? { inert: "" } : {})}
                     >
                       <StructuredInputForm active={mode === "structured"} onSubmit={onSubmit} />

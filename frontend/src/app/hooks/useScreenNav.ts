@@ -47,4 +47,13 @@ export function useScreenNav(): (s: Screen) => void {
         return;
       }
       // processing/results/chat은 onNavigate로 직접 진입하지 않는다(항상 플로우 내부 콜백으로만 전환).
-      if (s ===
+      if (s === "processing" || s === "results" || s === "chat") return;
+      // processing/results/chat 오버레이가 떠 있는 동안 GNB 등에서 실제 라우트로 이동하는 경우,
+      // 오버레이를 먼저 닫아야 RootLayout이 <Outlet/>(새 라우트)을 렌더링한다. 이게 없으면
+      // 주소는 바뀌어도 화면은 계속 오버레이(예: 결과 화면)에 머물러 있는 것처럼 보인다.
+      exitFlow();
+      navigate(SCREEN_PATHS[s] ?? "/");
+    },
+    [navigate, exitFlow],
+  );
+}

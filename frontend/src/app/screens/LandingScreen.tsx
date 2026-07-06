@@ -163,15 +163,15 @@ export function LandingScreen({
                 }`}
                 style={{ animation: "mg-float 6s ease-in-out infinite" }}
               >
-                {/* Traditional Red Stamp Watermark */}
-                <div className="absolute top-5 right-5 w-14 h-14 rounded-full border-2 border-red-500/25 flex items-center justify-center text-[10px] font-bold text-red-500/35 rotate-12 select-none pointer-events-none">
-                  명가검증
-                </div>
-                
                 {/* Card Header */}
-                <div className="border-b border-hanji pb-3 mb-4 text-left">
+                <div className="border-b border-hanji pb-5 mb-4 text-left">
                   <span className="text-[9px] font-bold tracking-[0.2em] text-gold-text uppercase">Myeongga Report</span>
                   <h4 className="text-xs font-semibold text-foreground mt-0.5">명가작명소 추천 인증서</h4>
+                </div>
+
+                {/* Traditional Red Stamp Watermark */}
+                <div className="absolute top-3 right-3 w-14 h-14 rounded-full border-2 border-red-500/25 flex items-center justify-center text-[10px] font-bold text-red-500/35 select-none pointer-events-none">
+                  명가검증
                 </div>
                 
                 {/* The Name Block */}

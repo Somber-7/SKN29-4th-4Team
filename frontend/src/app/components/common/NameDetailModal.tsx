@@ -52,7 +52,7 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
         {/* 명가인증 도장 워터마크 — 인증서 모티프. 헤더의 닫기 버튼(우측 상단)과
             겹치지 않도록 버튼 폭(w-10=40px)+여백을 감안해 right-24로 이격 */}
         <div
-          className="absolute top-8 right-24 w-14 h-14 rounded-full border-2 border-red-500/20 hidden sm:flex print:flex items-center justify-center text-[10px] font-bold text-red-500/30 rotate-12 pointer-events-none select-none"
+          className="absolute top-8 right-24 w-14 h-14 rounded-full border-2 border-red-500/20 hidden sm:flex print:flex items-center justify-center text-[10px] font-bold text-red-500/30 pointer-events-none select-none"
           aria-hidden="true"
         >
           명가인증
@@ -172,4 +172,46 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
               {result.sources.map((src, i) => (
                 <div key={i} className="flex items-start gap-3.5">
                   <SourceChip type={src.type} label={src.label} className="w-[110px] flex-shrink-0" />
-                  <p className="text-xs text-ink break-keep flex-1 pt-0.5 l
+                  <p className="text-xs text-ink break-keep flex-1 pt-0.5 leading-relaxed">
+                    {SOURCE_DESCRIPTIONS[src.type]}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 sm:px-10 py-5 border-t border-hanji flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] text-hint break-keep">
+              추천 결과는 참고용 정보이며 법적 효력이 없습니다.
+            </p>
+            {/* 인쇄/PDF 저장본에만 보이는 인증 서명 — 화면에서는 숨김 */}
+            <p className="hidden print:flex items-center gap-2 text-[10px] text-caption mt-2 font-mono">
+              <span>검증 엔진 v2.5</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-semibold text-gold-text">MYEONGGA CERTIFIED</span>
+            </p>
+          </div>
+          <div className="print:hidden flex gap-2 flex-shrink-0">
+            <GhostButton
+              onClick={() => window.print()}
+              className="px-4 py-2.5 text-xs rounded-lg inline-flex items-center gap-1.5"
+            >
+              <Printer size={13} aria-hidden="true" />
+              인증서 저장
+            </GhostButton>
+            <GhostButton onClick={onClose} className="px-5 py-2.5 text-xs rounded-lg">
+              닫기
+            </GhostButton>
+            <PrimaryButton onClick={onClose} className="px-5 py-2.5 text-xs">
+              확인했습니다
+            </PrimaryButton>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
