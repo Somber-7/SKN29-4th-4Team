@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.http import JsonResponse
-from django.urls import path
+from django.urls import include, path
 
 
 def health(request):
@@ -25,7 +25,6 @@ def health(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', health),
-    # 실제 작명 홈페이지 뷰가 만들어지면 위 health를 대체하거나
-    # path('', include('naming.urls')) 로 바꾸면 됨
+    path('api/', include('naming.urls')),
+    path('healthz', health),  # 내부 점검용 — nginx의 '/'는 React가 서빙하므로 외부 노출 경로 아님
 ]

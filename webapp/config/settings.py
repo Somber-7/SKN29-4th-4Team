@@ -34,6 +34,15 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'false').lower() == 'true'
 
 ALLOWED_HOSTS = ['*']
 
+# 프론트(React SPA)가 JS로 CSRF 쿠키를 읽어 헤더에 실어 보내야 하므로 False(기본값) 유지
+CSRF_COOKIE_HTTPONLY = False
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'http://localhost:5173',
+    'https://myeongga.site',
+]
+SESSION_COOKIE_SAMESITE = 'Lax'
+
 
 # Application definition
 

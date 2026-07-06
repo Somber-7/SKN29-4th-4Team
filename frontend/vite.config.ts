@@ -17,14 +17,13 @@ export default defineConfig({
 
   server: {
     proxy: {
-      // Django (인증·마이페이지·인사이트·관리자)
+      // nginx(로컬 docker-compose, 80번 포트)로 프록시 — django/fastapi는 컨테이너 내부에만 노출되어 있어 직접 접근 불가
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost',
         changeOrigin: true,
       },
-      // FastAPI + Neo4j (작명 생성·채팅)
       '/naming-api': {
-        target: 'http://localhost:8001',
+        target: 'http://localhost',
         changeOrigin: true,
       },
     },

@@ -12,8 +12,8 @@ services:
 
   nginx:
     build:
-      context: ./deploy/nginx
-      dockerfile: Dockerfile.local
+      context: .
+      dockerfile: deploy/nginx/Dockerfile.local
     ports:
       - "80:80"
     depends_on:
@@ -47,6 +47,8 @@ services:
     image: neo4j:5
     environment:
       - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+      - NEO4J_server_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=512M
     volumes:
       - neo4j_local_data:/data
     expose:

@@ -1,2 +1,12 @@
+# 1단계: React 빌드
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY frontend/package.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# 2단계: nginx + 정적 파일
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
