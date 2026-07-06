@@ -10,6 +10,18 @@
 
 ## Part A — EC2 환경 준비
 
+### A-0. 인스턴스 생성 (AWS 콘솔)
+
+RDS/S3/IAM은 EC2와 별개 리소스라 EC2를 삭제/재생성해도 그대로 남는다. 인스턴스가 없거나 새로 만들어야 하는 상황이면 여기부터 시작.
+
+1. EC2 콘솔 → **인스턴스 시작**
+2. AMI: **Ubuntu** (최신 LTS)
+3. 인스턴스 유형: `c7i-flex.large` (또는 프리 티어 크레딧 내 유사 사양)
+4. 키 페어: 기존 것 재사용 또는 신규 생성 (`.pem` 다운로드, Xshell 접속용)
+5. 네트워크 설정 → 보안 그룹: 신규 생성 시 인바운드 22/80/443 규칙 추가 (Part D 참고)
+6. **스토리지: 반드시 30GiB 이상으로 설정** — 기본값(8GB)으로 두면 FastAPI 이미지 빌드(torch 등) 중 디스크 부족(`No space left on device`) 발생
+7. 시작 → Xshell 등으로 SSH 접속
+
 ```bash
 # A-1. 확인
 free -h
@@ -482,11 +494,21 @@ docker compose -f docker-compose.4th.yml ps
 
 ## Part D — 마무리
 
+> **퍼블릭 IP가 바뀌었다면(신규 인스턴스 등) 아래를 먼저 갱신** — 안 하면 자동 배포와 HTTPS가 예전 IP를 계속 참조하게 됨.
+> 1. GitHub 저장소 Settings → Secrets and variables → Actions → **`EC2_HOST`**를 새 퍼블릭 IP로 수정
+> 2. 도메인 관리 콘솔에서 `myeongga.site`의 **DNS A레코드**를 새 퍼블릭 IP로 수정 (전파에 수 분~수십 분 소요)
+> 3. DNS 전파 확인 후 아래 Certbot 재실행 (새 인스턴스는 인증서 파일이 없으므로 반드시 재발급)
+
 ```bash
-# HTTPS (도메인 있는 경우, 선택)
+# HTTPS — 도메인(myeongga.site)의 DNS A레코드가 이 EC2의 퍼블릭 IP를 가리키고 있어야 함 (먼저 확인)
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
-sudo certbot --nginx -d <도메인>
+
+# nginx가 Docker 컨테이너로 80번을 이미 점유 중 — standalone 검증을 위해 잠시 내림
+docker compose -f docker-compose.4th.yml stop nginx
+sudo certbot certonly --standalone -d myeongga.site
+docker compose -f docker-compose.4th.yml up -d nginx
+# 인증서는 /etc/letsencrypt/live/myeongga.site/ 에 생성되며, nginx.conf가 이 경로를 그대로 참조함
 ```
 
 **보안 그룹 최종 상태**
