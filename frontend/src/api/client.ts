@@ -36,6 +36,12 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler;
 }
 
+/** Django가 내려준 csrftoken 쿠키를 읽는다 */
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
 }
@@ -44,25 +50,43 @@ function createClient(baseUrl: string) {
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { body, headers, ...rest } = options;
 
+    const controller = new AbortController();
+    // 작명 생성(FastAPI+LLM)은 응답이 오래 걸릴 수 있어 여유를 두고, 그 외 일반 API는 짧게 끊는다
+    const timeoutMs = baseUrl === NAMING_API_BASE ? 90_000 : 15_000;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    const csrfToken = getCookie("csrftoken");
+
     let res: Response;
     try {
       res = await fetch(`${baseUrl}${path}`, {
         ...rest,
         // Django 세션 쿠키(또는 향후 JWT) 인증을 위해 항상 쿠키 포함 — 단일 도메인(nginx) 구성이면 CORS 이슈 없음
         credentials: "include",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
           ...headers,
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "AbortError") {
+        throw new ApiError({
+          status: 0,
+          message: "요청 시간이 초과되었습니다.",
+          detail: cause,
+        });
+      }
       throw new ApiError({
         status: 0,
         message: "네트워크 요청에 실패했습니다.",
         detail: cause,
       });
+    } finally {
+      clearTimeout(timer);
     }
 
     if (res.status === 401) {
