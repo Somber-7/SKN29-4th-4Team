@@ -1,0 +1,259 @@
+/*
+ * 디자인 토큰 단일 소스.
+ * 이전에는 값이 :root의 순수 CSS 변수(--primary 등)로 한 번, 다시 @theme inline에서
+ * --color-primary: var(--primary) 형태로 한 번 더 선언되어 같은 값이 두 곳에 존재했다.
+ * 이 프로젝트는 다크모드/런타임 테마 전환이 없으므로(위 grep 확인) 그 간접 참조가
+ * 필요 없다 — @theme(비-inline)에 실제 값을 직접 선언해 Tailwind 유틸리티 생성과
+ * CSS 변수 선언을 하나로 합친다. 렌더링 결과(색상·간격 값)는 이전과 동일하다.
+ *
+ * 화면 코드에서 var(--primary), var(--border) 처럼 색상 접두어 없는 이름으로 직접
+ * 참조하던 곳(recharts stroke/fill, sonner --normal-bg 등)은 전부 var(--color-*)로
+ * 갱신했다 — 참조 대상 값 자체는 그대로다.
+ */
+
+@theme {
+  --color-background: #FAFAFA;
+  --color-foreground: #1A1A1A;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1A1A1A;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #1A1A1A;
+  --color-primary: #6B4E2E;
+  --color-primary-foreground: #FAFAFA;
+  --color-secondary: #F5F0E8;
+  --color-secondary-foreground: #3A3028;
+  --color-muted: #F0EDE8;
+  --color-muted-foreground: #7A7060; /* 3.72→≥4.5:1 (AA) */
+  --color-accent: #8B6944;
+  --color-accent-foreground: #FAFAFA;
+  --color-destructive: #B0543C;
+  --color-destructive-foreground: #FAFAFA;
+  --color-border: #E5E1DA;
+  --color-input: transparent;
+  --color-input-background: #F5F2EC;
+  --color-switch-background: #C8B898;
+
+  /* 명가작명소 brand text tiers — additional grays beyond the base shadcn tokens above.
+     Ordered darkest → lightest by how much emphasis the text carries.
+     Named without a "text-" prefix so they read cleanly as text-label, border-label,
+     placeholder-faint, etc. instead of doubling up (text-text-label). */
+  --color-label: #5A5248; /* form labels, inactive nav items */
+  --color-ink: #6B6456; /* secondary body copy / descriptions */
+  --color-caption: #857A66; /* small uppercase eyebrow / kicker labels — 2.96→≥4.5:1 (AA) */
+  --color-hint: #B0A898; /* 장식·구분선·비필수 마이크로카피 전용. 읽어야 하는 텍스트 금지 */
+  --color-faint: #C0B8B0; /* 입력 placeholder 전용 */
+
+  /* 명가작명소 "묵향한지 (Ink & Hanji)" brand tokens — 하드코딩 hex 승격/보정 */
+  --color-hanji: #F7F2E9; /* 카드·서피스 (기존 #FAF5E8/#FAF8F5/#F5F0E8 통합) */
+  --color-border-warm: #E8DCC8; /* 웜 카드 테두리 */
+  --color-gold-border: #B09060; /* 테두리·아이콘 전용 (텍스트 사용 금지, 3.0:1) */
+  --color-gold-text: #8A6B3C; /* 골드 텍스트 (4.9:1 AA) */
+  --color-seal: #B0543C; /* 인주·도장·위험 액션 */
+  --color-pine: #3E7A5E; /* 송록 — 검증 PASS */
+  --color-primary-hover: #513A20; /* 호두 진함 hover */
+
+  --color-ring: #6B4E2E;
+  --color-chart-1: oklch(0.646 0.222 41.116);
+  --color-chart-2: oklch(0.6 0.118 184.704);
+  --color-chart-3: oklch(0.398 0.07 227.392);
+  --color-chart-4: oklch(0.828 0.189 84.429);
+  --color-chart-5: oklch(0.769 0.188 70.08);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-sidebar: oklch(0.985 0 0);
+  --color-sidebar-foreground: oklch(0.145 0 0);
+  --color-sidebar-primary: #030213;
+  --color-sidebar-primary-foreground: oklch(0.985 0 0);
+  --color-sidebar-accent: oklch(0.97 0 0);
+  --color-sidebar-accent-foreground: oklch(0.205 0 0);
+  --color-sidebar-border: oklch(0.922 0 0);
+  --color-sidebar-ring: oklch(0.708 0 0);
+
+  /* 명가작명소 브랜드 폰트 토큰 — Tailwind v4는 --font-* 테마 키에서 자동으로
+     font-hanja / font-headline 유틸리티를 생성한다. 기존 constants.ts의
+     HANJA_FONT/HEADLINE_FONT 문자열과 값이 동일하다(constants.ts에도 계속 남겨
+     두어 var(--font-hanja) 등을 직접 조합해야 하는 SVG 등 특수 케이스를 지원). */
+  --font-hanja: 'Nanum Myeongjo', serif;
+  --font-headline: 'Gowun Batang', serif;
+}
+
+:root {
+  /* Tailwind 유틸리티로 노출되지 않는, @layer base 전용 보조 토큰 (중복 선언 아님) */
+  --font-size: 16px;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  ruby rt {
+    font-size: 0.6em;
+    font-weight: 400;
+    color: #8A7A60;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  ::selection {
+    background: #E8DCC8;
+    color: #1A1A1A;
+  }
+}
+
+/* ─── 명가작명소 shared animations ─────────────────────────────────────────── */
+
+@keyframes mg-hero-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes mg-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mg-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes mg-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mg-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
+}
+
+@keyframes mg-scroll-hint {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(6px); opacity: 1; }
+}
+
+/* 무한 루프 장식 모션은 두 곳만 허용: 404 도장(印), 랜딩 히어로 인증서 카드(mg-float).
+   그 외 화면에는 추가 금지. */
+@keyframes mg-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ─── Custom scrollbar: thin, warm, editorial ──────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #C8C0B8 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D8D2C8;
+  border: 3px solid #FAFAFA;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B0A898;
+}
+
+/* ─── 인증서 인쇄/저장: 화면의 나머지는 숨기고 #mg-certificate만 종이에 출력 ───── */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #mg-certificate,
+  #mg-certificate * {
+    visibility: visible;
+  }
+  #mg-certificate {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+
+/* ─── Accessibility: respect reduced-motion preference ─────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

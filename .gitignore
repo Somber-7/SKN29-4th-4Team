@@ -6,3 +6,24 @@ __pycache__/
 db.sqlite3
 staticfiles/
 *.csv
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 로그
+*.log
+
+# Python 캐시·빌드 산출물
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ChromaDB 벡터 데이터 (용량 크고 재생성 가능 — 커밋 대상 아님)
+data/chroma/
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
