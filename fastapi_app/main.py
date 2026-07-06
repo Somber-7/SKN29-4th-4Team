@@ -129,18 +129,19 @@ class NameResultList(BaseModel):
     results: list[NameResult]
 
 
-_STRUCTURE_PROMPT = """당신은 아래에 주어진 '수집된 자료'만 근거로 삼아 작명 추천 결과를 정해진 스키마로 구조화하는 역할입니다.
-자료에 없는 한자·수리·오행 정보를 지어내지 마세요. 자료에서 근거를 찾을 수 없으면 sources를 비워두고 sukgyeokDetail은 빈 배열로 둡니다.
+_STRUCTURE_PROMPT = """당신은 아래 '완성된 추천 결과'를 정해진 JSON 스키마로 그대로 옮겨 담는 역할입니다.
+'완성된 추천 결과'는 이미 검증·후처리(수리 재계산, 부적절 한자 교체, 중복 제거 등)를 마친 최종본입니다.
+새로운 이름·한자·수리·오행 정보를 만들어내지 마세요 — 스키마 변환일 뿐, 내용을 다시 창작하는 단계가 아닙니다.
 
 각 이름마다 다음을 채우세요:
 - lastName: 성씨 한자 1글자의 char/reading(독음)/meaning(뜻)/strokes(획수)/element(오행)
 - hanja: 이름(성씨 제외) 한자, hangul: 이름의 한글
 - ruby: 이름 각 글자의 char/reading/meaning/strokes/element 배열
-- sukgyeok: 수리(획수) 판단 한 줄 요약
-- sukgyeokDetail: 원격/형격/이격/정격 4격의 name/value(획수 합)/fortune(길흉) 배열 — 자료에 수리 계산 결과가 있을 때만 채움
-- sources: 참고한 자료 유형(hanja/suri/beopryeong/nonmun)과 그 출처 라벨
+- sukgyeok: 수리(획수) 판단 한 줄 요약 — '완성된 추천 결과'의 수리 문장을 그대로 사용
+- sukgyeokDetail: 원격/형격/이격/정격 4격의 name/value(획수 합)/fortune(길흉) 배열 — '완성된 추천 결과'에 표기된 숫자를 그대로 사용, 없으면 빈 배열
+- sources: 아래 '참고 자료'에서 이 이름과 관련된 출처 유형(hanja/suri/beopryeong/nonmun)과 라벨을 찾아 채움, 못 찾으면 빈 배열
 
-이름은 최소 1개, 최대 5개까지 자료에서 실제로 뒷받침되는 만큼만 생성하세요. id는 1부터 순번을 매깁니다."""
+'완성된 추천 결과'에 나온 이름만 그대로 스키마로 변환하세요 — 이름을 추가하거나 빼지 마세요. id는 1부터 순번을 매깁니다."""
 
 
 def _build_structured_query(req: dict) -> str:
@@ -173,14 +174,15 @@ async def _generate_structured(query: str) -> list[NameResult]:
         "surname_hanja": "",
     }
     result = await _graph.ainvoke(state)
+    answer = result.get("answer", "")
     context = result.get("context", "")
-    if not context:
-        raise ValueError("empty context")
+    if not answer:
+        raise ValueError("empty answer")
 
     structuring_llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0.3).with_structured_output(NameResultList)
     structured: NameResultList = await structuring_llm.ainvoke([
         SystemMessage(content=_STRUCTURE_PROMPT),
-        HumanMessage(content=f"사용자 요청: {query}\n\n수집된 자료:\n{context}"),
+        HumanMessage(content=f"사용자 요청: {query}\n\n완성된 추천 결과:\n{answer}\n\n참고 자료(출처 라벨용):\n{context}"),
     ])
     return structured.results
 
