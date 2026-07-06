@@ -6,6 +6,7 @@ on:
     paths:
       - 'webapp/**'
       - 'fastapi_app/**'
+      - 'frontend/**'
       - 'deploy/**'
       - 'src/**'
       - 'requirements-fastapi.txt'

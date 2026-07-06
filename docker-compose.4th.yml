@@ -1,4 +1,6 @@
 services:
+  # nginx가 frontend/ 를 멀티스테이지로 빌드해 서빙하므로, 배포 워크플로우(.github/workflows/deploy-4th.yml)도
+  # frontend/** 변경을 감시하도록 되어 있다.
   nginx:
     build:
       context: .
