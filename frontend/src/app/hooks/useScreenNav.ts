@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Screen } from "@/app/types";
+import { useNamingFlow } from "@/app/providers/NamingFlowProvider";
 
 /**
  * 기존 화면 컴포넌트들이 그대로 사용하는 Screen 기반 onNavigate(s: Screen) 시그니처를
@@ -34,19 +35,16 @@ const SCREEN_PATHS: Partial<Record<Screen, string>> = {
 
 export function useScreenNav(): (s: Screen) => void {
   const navigate = useNavigate();
+  const { exitFlow } = useNamingFlow();
 
   return useCallback(
     (s: Screen) => {
       // gate는 더 이상 플로우 오버레이가 아니라 RootLayout의 세션당 1회 자동 노출이므로,
       // "작명 시작하기" 클릭은 곧바로 input 라우트로 보낸다.
       if (s === "gate") {
+        exitFlow();
         navigate("/input");
         return;
       }
       // processing/results/chat은 onNavigate로 직접 진입하지 않는다(항상 플로우 내부 콜백으로만 전환).
-      if (s === "processing" || s === "results" || s === "chat") return;
-      navigate(SCREEN_PATHS[s] ?? "/");
-    },
-    [navigate],
-  );
-}
+      if (s ===

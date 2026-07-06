@@ -157,7 +157,7 @@ function ArticleModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-[60] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
       onClick={onClose}
     >
       <div
@@ -711,4 +711,3 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
       )}
     </div>
   );
-}

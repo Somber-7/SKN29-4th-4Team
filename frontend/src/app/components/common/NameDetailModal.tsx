@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import type { NameResult, SourceType } from "@/app/types";
 import { SourceChip } from "@/app/components/common/SourceChip";
@@ -29,9 +30,14 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  return (
+  // 페이지 전환 애니메이션(mg-hero-in)이 transform을 쓰는 상위 요소에 걸려 있으면, 그 요소가
+  // position:fixed 자손의 containing block이 되어버려서 이 모달이 "뷰포트"가 아니라 그 상위
+  // 요소(문서 전체 높이) 기준으로 위치하게 된다 — 그러면 스크롤을 내린 채로 열었을 때 모달이
+  // 화면 중앙이 아니라 엉뚱한 위치에 뜬다. document.body에 포탈로 그려서 그 영향을 완전히 피하고,
+  // 항상 "현재 보이는 화면" 기준 정중앙에 뜨도록 한다.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-[60] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
       onClick={onClose}
     >
       <div
@@ -40,12 +46,13 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
         aria-modal="true"
         aria-label={`${fullHanja} ${fullHangul} 상세 정보`}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white border border-border-warm rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-[0_32px_80px_rgba(26,14,4,0.25)] relative print:max-h-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
+        className="bg-white border border-border-warm rounded-3xl w-full max-w-6xl max-h-[85vh] overflow-y-auto scrollbar-none shadow-[0_32px_80px_rgba(26,14,4,0.25)] relative print:max-h-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
         style={{ animation: "mg-fadein 0.25s ease forwards" }}
       >
-        {/* 명가인증 도장 워터마크 — 인증서 모티프 */}
+        {/* 명가인증 도장 워터마크 — 인증서 모티프. 헤더의 닫기 버튼(우측 상단)과
+            겹치지 않도록 버튼 폭(w-10=40px)+여백을 감안해 right-24로 이격 */}
         <div
-          className="absolute top-6 right-16 w-14 h-14 rounded-full border-2 border-red-500/20 hidden sm:flex print:flex items-center justify-center text-[10px] font-bold text-red-500/30 rotate-12 pointer-events-none select-none"
+          className="absolute top-8 right-24 w-14 h-14 rounded-full border-2 border-red-500/20 hidden sm:flex print:flex items-center justify-center text-[10px] font-bold text-red-500/30 rotate-12 pointer-events-none select-none"
           aria-hidden="true"
         >
           명가인증
@@ -63,11 +70,12 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
             >
               {fullHanja}
             </div>
-            <div className="flex items-baseline gap-2.5">
-              <span className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xl sm:text-2xl font-semibold text-foreground tracking-wide">
                 {fullHangul}
               </span>
-              <span className="text-sm font-semibold text-primary">
+              <span className="w-1.5 h-1.5 rounded-full bg-border-warm flex-shrink-0" aria-hidden="true" />
+              <span className="text-sm font-medium text-primary">
                 81수리 4격 · {result.sukgyeok}
               </span>
             </div>
@@ -83,8 +91,8 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
           </button>
         </div>
 
-        {/* Body — 데스크톱 2열: 한자 풀이 | 81수리 + 출처 */}
-        <div className="px-6 sm:px-10 py-7 grid gap-8 lg:grid-cols-2 lg:gap-10">
+        {/* Body — 데스크톱 3열: 한자 풀이 | 81수리 | 출처 (한 화면 안에 들어오도록 가로 배치, 스크롤 최소화) */}
+        <div className="px-6 sm:px-10 py-7 grid gap-8 lg:grid-cols-3 lg:gap-8">
           {/* 한자 풀이 (성 포함) */}
           <section>
             <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
@@ -102,14 +110,18 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
                   >
                     {c.char}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2 mb-0.5">
-                      <span className="text-base font-semibold text-foreground">{c.reading}</span>
-                      <span className="text-xs text-caption">{c.meaning}</span>
+                  <div className="min-w-0 flex-1 grid grid-cols-[36px_1fr] gap-3.5 items-center">
+                    {/* 발음 및 획수 (좌측 정렬) */}
+                    <div className="flex flex-col min-w-0 text-left">
+                      <span className="text-base font-semibold text-foreground leading-none mb-1.5">{c.reading}</span>
+                      <span className="text-[11px] text-muted-foreground tabular-nums leading-none">{c.strokes}획</span>
                     </div>
-                    <p className="text-xs text-ink">
-                      {c.strokes}획 · <span className="font-hanja">{c.element}</span>行
-                    </p>
+
+                    {/* 뜻풀이 및 자원오행 (좌측 정렬로 가독성 극대화 및 칼정렬) */}
+                    <div className="flex flex-col min-w-0 text-left">
+                      <span className="text-xs text-caption leading-none mb-2">{c.meaning}</span>
+                      <span className="text-xs font-semibold text-primary leading-none">{c.element}行</span>
+                    </div>
                   </div>
                   {i === 0 && (
                     <span className="text-[10px] font-bold text-gold-text bg-hanji border border-gold-border/30 rounded px-2 py-0.5 flex-shrink-0">
@@ -121,84 +133,43 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
             </div>
           </section>
 
-          <div className="space-y-8">
-            {/* 81수리 4격 상세 */}
-            <section>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
-                81수리 4격 상세
-              </p>
-              <div className="border border-border-warm/70 rounded-2xl divide-y divide-hanji overflow-hidden bg-white">
-                {result.sukgyeokDetail.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-label">{d.name}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-semibold text-foreground tabular-nums">
-                        {d.value}수
-                      </span>
-                      <span
-                        className={`text-xs font-medium px-2.5 py-0.5 rounded border ${
-                          d.fortune === "대길"
-                            ? "text-primary border-border-warm bg-hanji"
-                            : "text-ink border-border bg-muted"
-                        }`}
-                      >
-                        {d.fortune}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* 참고 출처 */}
-            <section>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
-                참고 출처
-              </p>
-              <div className="space-y-3">
-                {result.sources.map((src, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <SourceChip type={src.type} label={src.label} />
-                    <p className="text-xs text-ink break-keep flex-1 pt-0.5 leading-relaxed">
-                      {SOURCE_DESCRIPTIONS[src.type]}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 sm:px-10 py-5 border-t border-hanji flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] text-hint break-keep">
-              추천 결과는 참고용 정보이며 법적 효력이 없습니다.
+          {/* 81수리 4격 상세 */}
+          <section className="flex flex-col lg:h-full">
+            <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
+              81수리 4격 상세
             </p>
-            {/* 인쇄/PDF 저장본에만 보이는 인증 서명 — 화면에서는 숨김 */}
-            <p className="hidden print:flex items-center gap-2 text-[10px] text-caption mt-2 font-mono">
-              <span>검증 엔진 v2.5</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-semibold text-gold-text">MYEONGGA CERTIFIED</span>
+            <div className="border border-border-warm/70 rounded-2xl divide-y divide-hanji overflow-hidden bg-white lg:flex-1 lg:flex lg:flex-col">
+              {result.sukgyeokDetail.map((d, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-3.5 lg:flex-1">
+                  <span className="text-sm font-medium text-foreground/75">{d.name}</span>
+                  <div className="flex items-center gap-3.5">
+                    <span className="text-base font-semibold text-foreground tabular-nums">
+                      {d.value}수
+                    </span>
+                    <span
+                      className={`text-xs font-medium w-14 flex-shrink-0 inline-flex items-center justify-center text-center py-0.5 rounded-md border transition-colors ${
+                        d.fortune === "대길"
+                          ? "text-primary border-gold-border/30 bg-hanji"
+                          : d.fortune === "길" || d.fortune === "중길"
+                            ? "text-primary/80 border-border-warm/75 bg-hanji/50"
+                            : "text-muted-foreground border-border bg-muted"
+                      }`}
+                    >
+                      {d.fortune}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 참고 출처 */}
+          <section>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
+              참고 출처
             </p>
-          </div>
-          <div className="print:hidden flex gap-2 flex-shrink-0">
-            <GhostButton
-              onClick={() => window.print()}
-              className="px-4 py-2.5 text-xs rounded-lg inline-flex items-center gap-1.5"
-            >
-              <Printer size={13} aria-hidden="true" />
-              인증서 저장
-            </GhostButton>
-            <GhostButton onClick={onClose} className="px-5 py-2.5 text-xs rounded-lg">
-              닫기
-            </GhostButton>
-            <PrimaryButton onClick={onClose} className="px-5 py-2.5 text-xs">
-              확인했습니다
-            </PrimaryButton>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+            <div className="space-y-3">
+              {result.sources.map((src, i) => (
+                <div key={i} className="flex items-start gap-3.5">
+                  <SourceChip type={src.type} label={src.label} className="w-[110px] flex-shrink-0" />
+                  <p className="text-xs text-ink break-keep flex-1 pt-0.5 l

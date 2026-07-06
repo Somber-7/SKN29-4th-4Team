@@ -7,12 +7,7 @@ const SOURCE_STYLES: Record<SourceType, string> = {
   nonmun: "bg-seal/8 text-seal border-seal/25",
 };
 
-export function SourceChip({ type, label }: { type: SourceType; label: string }) {
+export function SourceChip({ type, label, className = "" }: { type: SourceType; label: string; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 text-[11px] font-medium border ${SOURCE_STYLES[type]}`}
-    >
-      {label}
-    </span>
-  );
-}
+      className={`inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-medium border rounded-md tr

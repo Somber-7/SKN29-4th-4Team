@@ -38,6 +38,12 @@ interface NamingFlowContextValue {
   retryFromResults: () => void;
   /** history 목록에서 과거 요청 다시 열기 → results 오버레이 진입 */
   openHistoryResult: (request: NameRequest) => void;
+  /**
+   * processing/results/chat 오버레이를 즉시 닫는다. GNB 등에서 실제 라우트(랜딩·인사이트 등)로
+   * 이동할 때 호출한다 — RootLayout은 flow가 남아있으면 라우트가 바뀌어도 오버레이를 계속
+   * 렌더링하므로, 이 함수 없이는 오버레이가 떠 있는 동안 GNB 클릭이 화면에 반영되지 않는다.
+   */
+  exitFlow: () => void;
 }
 
 const NamingFlowContext = createContext<NamingFlowContextValue | null>(null);
@@ -77,24 +83,10 @@ export function NamingFlowProvider({ children }: { children: ReactNode }) {
     setFlow("results");
   }, []);
 
+  const exitFlow = useCallback(() => setFlow(null), []);
+
   const value: NamingFlowContextValue = {
     flow,
     request,
     chatQuestion,
-    submitRequest,
-    completeProcessing,
-    cancelProcessing,
-    openChat,
-    backToResults,
-    retryFromResults,
-    openHistoryResult,
-  };
-
-  return <NamingFlowContext.Provider value={value}>{children}</NamingFlowContext.Provider>;
-}
-
-export function useNamingFlow(): NamingFlowContextValue {
-  const ctx = useContext(NamingFlowContext);
-  if (!ctx) throw new Error("useNamingFlow는 NamingFlowProvider 내부에서만 사용할 수 있습니다.");
-  return ctx;
-}
+    sub

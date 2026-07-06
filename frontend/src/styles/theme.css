@@ -227,6 +227,16 @@
   background: #B0A898;
 }
 
+/* 스크롤바 감추기 유틸리티 */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE, Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+
 /* ─── 인증서 인쇄/저장: 화면의 나머지는 숨기고 #mg-certificate만 종이에 출력 ───── */
 
 @media print {
@@ -247,13 +257,4 @@
 
 /* ─── Accessibility: respect reduced-motion preference ─────────────────────── */
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+@media (prefers-red
