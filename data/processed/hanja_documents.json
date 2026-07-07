@@ -34057,7 +34057,7 @@
   },
   {
     "id": "hanja_OHE-01893",
-    "document": "한자 智(지)은 뜻이 '글기'인 인명용 한자이다. 유니코드는 U+667A, 획수는 12획, 발음오행은 금, 자원오행은 화이다.",
+    "document": "한자 智(지)은 뜻이 '슬기'인 인명용 한자이다. 유니코드는 U+667A, 획수는 12획, 발음오행은 금, 자원오행은 화이다.",
     "metadata": {
       "type": "hanja",
       "collection": "hanja_profiles",
@@ -34066,7 +34066,7 @@
       "hangul": "지",
       "hanja": "智",
       "unicode": "U+667A",
-      "sound_meaning": "글기",
+      "sound_meaning": "슬기",
       "strokes": 12,
       "sound_ohaeng": "금",
       "resource_ohaeng": "화",

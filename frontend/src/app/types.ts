@@ -42,7 +42,7 @@ export interface AuthUser {
 // discriminated union으로 구분한다. 자연어 파싱(NLU)은 백엔드의 역할이며,
 // nameQueryParser.parseNameQuery는 입력 미리보기 칩 용도로만 프론트에 남아있다.
 export type NameRequest =
-  | { type: "natural"; query: string }
+  | { type: "natural"; query: string; excludeNames?: string[] }
   | {
       type: "structured";
       lastName: string;
@@ -50,6 +50,8 @@ export type NameRequest =
       elements?: string[];
       strokeRange?: string;
       meaning?: string;
+      /** 재생성 시 제외할 기존 추천 이름(hangul) — 백엔드가 동일 이름 재추천을 방지 */
+      excludeNames?: string[];
     };
 
 export type SourceType = "hanja" | "suri" | "beopryeong" | "nonmun";

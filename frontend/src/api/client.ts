@@ -100,9 +100,14 @@ function createClient(baseUrl: string) {
       } catch {
         detail = undefined;
       }
+      // 백엔드 에러 계약({ message, detail })의 message를 사용자 메시지로 우선 사용
+      const serverMessage = (detail as { message?: unknown } | undefined)?.message;
       throw new ApiError({
         status: res.status,
-        message: `API 요청 실패: ${res.status} ${res.statusText}`,
+        message:
+          typeof serverMessage === "string" && serverMessage
+            ? serverMessage
+            : `API 요청 실패: ${res.status} ${res.statusText}`,
         detail,
       });
     }
