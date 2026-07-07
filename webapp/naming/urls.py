@@ -15,4 +15,8 @@ urlpatterns = [
     path('me', views.me_view, name='me'),
     path('me/history', views.history_view, name='history'),
     path('me/change-password', views.change_password_view, name='change_password'),
+    path('support/contact', views.contact_submit_view, name='contact_submit'),
+    path('support/notices', views.notice_list_view, name='notice_list'),
+    path('support/notices/<int:notice_id>', views.notice_detail_view, name='notice_detail'),
+    path('support/faqs', views.faq_list_view, name='faq_list'),
 ]

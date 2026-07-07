@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import type { FaqCategory, Screen } from "@/app/types";
 import { useFaq } from "@/app/hooks/useFaq";
 import { isValidEmail } from "@/app/utils/validation";
+import { supportApi } from "@/api/support";
+import { ApiError } from "@/api/client";
 import { PageHeader } from "@/app/components/common/PageHeader";
 import { EmptyState } from "@/app/components/common/EmptyState";
 import { Reveal } from "@/app/components/common/Reveal";
@@ -16,8 +18,8 @@ import {
   AccordionTrigger,
 } from "@/app/components/ui/accordion";
 
-/** 고객센터 탭 — faq(자주 묻는 질문) / contact(문의하기). 화면 id와 1:1 대응 */
 export type SupportTab = "faq" | "contact";
+
 
 // ─── FAQ 섹션 ─────────────────────────────────────────────────────────────────
 
@@ -40,13 +42,14 @@ function FaqSection({ onGoContact }: { onGoContact: () => void }) {
 
   const FAQ_FILTERS: { value: FaqFilter; label: string }[] = [
     { value: "all", label: "전체" },
-    { value: "service", label: categoryLabels?.service ?? "" },
-    { value: "evidence", label: categoryLabels?.evidence ?? "" },
-    { value: "account", label: categoryLabels?.account ?? "" },
+    ...Object.entries(categoryLabels || {}).map(([key, label]) => ({
+      value: key as FaqFilter,
+      label: label as string,
+    })),
   ];
 
   const items = useMemo(() => {
-    return faqItems.filter((item) => {
+    return faqItems.filter((item: import("@/app/types").FaqItem) => {
       if (filter !== "all" && item.category !== filter) return false;
       if (!debounced) return true;
       return (
@@ -110,7 +113,7 @@ function FaqSection({ onGoContact }: { onGoContact: () => void }) {
         </div>
       ) : (
         <Accordion type="single" collapsible className="bg-white border border-border">
-          {items.map((item, i) => (
+          {items.map((item: import("@/app/types").FaqItem, i: number) => (
             // 구분선은 Reveal 래퍼에 — AccordionItem이 각 래퍼의 유일한 자식이라
             // last: 변형이 항목마다 적용되는 문제를 피한다
             <Reveal
@@ -128,7 +131,7 @@ function FaqSection({ onGoContact }: { onGoContact: () => void }) {
                       className="text-[10px] tracking-[0.18em] text-caption uppercase flex-shrink-0 w-[72px] text-center"
                       aria-hidden="true"
                     >
-                      {categoryLabels?.[item.category]}
+                      {categoryLabels?.[item.category] ?? item.category}
                     </span>
                     <span className="break-keep">{item.question}</span>
                   </span>
@@ -241,7 +244,7 @@ function ContactSection({
     if (message) setErrors((prev) => ({ ...prev, [key]: message }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const next: Errors = {};
     (["name", "email", "subject", "message", "agree"] as (keyof FormState)[]).forEach((key) => {
       const message = validateField(key);
@@ -257,15 +260,24 @@ function ContactSection({
     }
     if (next.agree) return;
 
-    // TODO: API 연동 — 현재는 제출 시뮬레이션
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await supportApi.submitContact({
+        name: form.name,
+        email: form.email,
+        topic: form.topic,
+        subject: form.subject,
+        message: form.message,
+      });
       setForm(INITIAL);
       toast.success("문의가 접수되었습니다.", {
         description: "평균 1영업일 안에 입력하신 이메일로 답변드립니다.",
       });
-    }, 900);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "문의 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputClass = (hasError: boolean) =>
@@ -514,8 +526,6 @@ export function SupportScreen({
   tab: SupportTab;
   onNavigate: (s: Screen) => void;
 }) {
-  const isFaq = tab === "faq";
-
   return (
     <div className="pt-16 min-h-screen bg-background flex flex-col">
       <main className="flex-1 w-full max-w-5xl mx-auto px-6 sm:px-8 py-14 sm:py-16">
@@ -526,12 +536,12 @@ export function SupportScreen({
           watermark="問"
         />
 
-        {/* 탭 전환 — 화면 id(faq/contact)와 동기화되어 해시 딥링크·푸터 링크가 그대로 동작 */}
+        {/* 탭 전환 — 화면 id와 동기화되어 해시 딥링크·푸터 링크가 그대로 동작 */}
         <div className="flex gap-2 mb-10" role="tablist" aria-label="고객센터 메뉴">
           {(
             [
-              { label: "자주 묻는 질문", screen: "faq", selected: isFaq },
-              { label: "문의하기", screen: "contact", selected: !isFaq },
+              { label: "자주 묻는 질문", screen: "faq", selected: tab === "faq" },
+              { label: "문의하기", screen: "contact", selected: tab === "contact" },
             ] as { label: string; screen: Screen; selected: boolean }[]
           ).map((t) => (
             <button
@@ -550,9 +560,9 @@ export function SupportScreen({
           ))}
         </div>
 
-        {isFaq ? (
-          <FaqSection onGoContact={() => onNavigate("contact")} />
-        ) : (
+
+        {tab === "faq" && <FaqSection onGoContact={() => onNavigate("contact")} />}
+        {tab === "contact" && (
           <ContactSection onGoFaq={() => onNavigate("faq")} onNavigate={onNavigate} />
         )}
       </main>

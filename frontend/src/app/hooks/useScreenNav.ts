@@ -21,16 +21,14 @@ const SCREEN_PATHS: Partial<Record<Screen, string>> = {
   login: "/login",
   signup: "/signup",
   insights: "/insights",
+  notices: "/notices",
   faq: "/faq",
   contact: "/contact",
   history: "/history",
   mypage: "/mypage",
   terms: "/terms",
   privacy: "/privacy",
-  adminDashboard: "/adminDashboard",
-  adminContent: "/adminContent",
-  adminUsers: "/adminUsers",
-  adminSettings: "/adminSettings",
+  // 관리자 화면(adminDashboard 등)은 별도 번들(/manage/)에만 존재 — 이 맵에 없다.
 };
 
 export function useScreenNav(): (s: Screen) => void {

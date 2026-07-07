@@ -1,12 +1,13 @@
 from django.contrib import admin
 
-from .models import NamingHistory, UserConsent
+from .models import NamingHistory, UserProfile
 
 
-@admin.register(UserConsent)
-class UserConsentAdmin(admin.ModelAdmin):
-    list_display = ("user", "terms_version", "privacy_version", "terms_agreed_at")
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "status", "approval_status", "terms_agreed_at")
     search_fields = ("user__username", "user__email")
+    list_filter = ("status", "approval_status")
 
 
 @admin.register(NamingHistory)

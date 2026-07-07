@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Routes, Route, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { isAdminScreen, type NameRequest, type Screen } from "@/app/types";
+import type { NameRequest, Screen } from "@/app/types";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useNamingFlow } from "@/app/providers/NamingFlowProvider";
 import { useScreenNav } from "@/app/hooks/useScreenNav";
@@ -10,11 +10,13 @@ import { useHandleLogout } from "@/app/hooks/useHandleLogout";
 import { hasSeenGateThisSession, markGateSeenThisSession } from "@/app/utils/gateSession";
 import { GNB } from "@/app/components/layout/GNB";
 import { Toaster } from "@/app/components/ui/sonner";
+import { apiClient, USE_MOCK } from "@/api/client";
 
 // ─── 화면 지연 로딩 (React.lazy) ───────────────────────────────────────────────
 // 화면 컴포넌트는 전부 named export이므로 default export로 어댑팅한다.
-// 파일 단위로 쪼개지므로 recharts를 쓰는 InsightsScreen/Admin*Screen은
-// 각자의 청크에만 포함되고 초기 청크에는 들어가지 않는다.
+// 파일 단위로 쪼개지므로 recharts를 쓰는 InsightsScreen은 자신의 청크에만 포함되고
+// 초기 청크에는 들어가지 않는다. 관리자 화면(Admin*Screen)은 이 번들에 없다 —
+// 별도 진입점(admin.html/main.admin.tsx, base:/manage/)에서만 로드된다.
 
 const LandingScreen = lazy(() =>
   import("@/app/screens/LandingScreen").then((m) => ({ default: m.LandingScreen })),
@@ -33,6 +35,9 @@ const InsightsScreen = lazy(() =>
 );
 const SupportScreen = lazy(() =>
   import("@/app/screens/SupportScreen").then((m) => ({ default: m.SupportScreen })),
+);
+const NoticesScreen = lazy(() =>
+  import("@/app/screens/NoticesScreen").then((m) => ({ default: m.NoticesScreen })),
 );
 const PolicyScreen = lazy(() =>
   import("@/app/screens/PolicyScreen").then((m) => ({ default: m.PolicyScreen })),
@@ -61,18 +66,6 @@ const MyPageScreen = lazy(() =>
 const HistoryScreen = lazy(() =>
   import("@/app/screens/HistoryScreen").then((m) => ({ default: m.HistoryScreen })),
 );
-const AdminDashboardScreen = lazy(() =>
-  import("@/app/screens/AdminDashboardScreen").then((m) => ({ default: m.AdminDashboardScreen })),
-);
-const AdminContentScreen = lazy(() =>
-  import("@/app/screens/AdminContentScreen").then((m) => ({ default: m.AdminContentScreen })),
-);
-const AdminUsersScreen = lazy(() =>
-  import("@/app/screens/AdminUsersScreen").then((m) => ({ default: m.AdminUsersScreen })),
-);
-const AdminSettingsScreen = lazy(() =>
-  import("@/app/screens/AdminSettingsScreen").then((m) => ({ default: m.AdminSettingsScreen })),
-);
 
 /** results 화면에 request가 아직 없을 때(예: 직접 진입 등 비정상 경로) 쓰는 기본값 — 기존 App.tsx와 동일 */
 const EMPTY_NATURAL_REQUEST: NameRequest = { type: "natural", query: "" };
@@ -83,9 +76,11 @@ function RouteFallback() {
 }
 
 // ─── 접근 가드 ─────────────────────────────────────────────────────────────────
-// 원래 App.tsx의 "LOGIN_REQUIRED_SCREENS 포함 && !user → 로그인으로 안내" effect와
-// "isAdminScreen && role !== admin → 안내 후 이동" effect를 각각 라우트 단위로 재현한다.
-// effect 기반으로 두어, 로그인 처리와 같은 틱에 일어나는 리다이렉트에서도 항상 최신 user를 본다.
+// 원래 App.tsx의 "LOGIN_REQUIRED_SCREENS 포함 && !user → 로그인으로 안내" effect를
+// 라우트 단위로 재현한다. effect 기반으로 두어, 로그인 처리와 같은 틱에 일어나는
+// 리다이렉트에서도 항상 최신 user를 본다.
+// 관리자 접근 가드(RequireAdmin)는 더 이상 이 번들에 없다 — 관리자는 별도 번들
+// (`/manage/`)에서 서버 세션(`admin_sessionid`)으로만 판정한다(§2 확정 사항 3·5).
 
 function RequireAuth({ screen, children }: { screen: Screen; children: ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -100,22 +95,6 @@ function RequireAuth({ screen, children }: { screen: Screen; children: ReactNode
   }, [isLoading, user, navigate, screen]);
 
   if (isLoading || !user) return null;
-  return <>{children}</>;
-}
-
-function RequireAdmin({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (user?.role !== "admin") {
-      toast.info("관리자 계정으로 로그인해 주세요.");
-      navigate(user ? "/" : "/login", { replace: true });
-    }
-  }, [isLoading, user, navigate]);
-
-  if (isLoading || user?.role !== "admin") return null;
   return <>{children}</>;
 }
 
@@ -141,6 +120,9 @@ function SignupRoute() {
 }
 function InsightsRoute() {
   return <InsightsScreen onNavigate={useScreenNav()} />;
+}
+function SupportNoticesRoute() {
+  return <NoticesScreen onNavigate={useScreenNav()} />;
 }
 function SupportFaqRoute() {
   return <SupportScreen tab="faq" onNavigate={useScreenNav()} />;
@@ -169,25 +151,14 @@ function HistoryRoute() {
   const { openHistoryResult } = useNamingFlow();
   return <HistoryScreen onNavigate={useScreenNav()} onOpenResult={openHistoryResult} />;
 }
-function AdminDashboardRoute() {
-  return <AdminDashboardScreen onNavigate={useScreenNav()} />;
-}
-function AdminContentRoute() {
-  return <AdminContentScreen onNavigate={useScreenNav()} />;
-}
-function AdminUsersRoute() {
-  return <AdminUsersScreen onNavigate={useScreenNav()} />;
-}
-function AdminSettingsRoute() {
-  return <AdminSettingsScreen onNavigate={useScreenNav()} />;
-}
 function NotFoundRoute() {
   return <NotFoundScreen onNavigate={useScreenNav()} />;
 }
 
 // ─── 루트 레이아웃 ─────────────────────────────────────────────────────────────
-// GNB 노출 여부(admin 제외), processing/results/chat 플로우 오버레이,
-// 그 외 화면은 <Outlet/>으로 라우트 렌더링 — 원래 App.tsx의 렌더 분기를 그대로 재현한다.
+// GNB + processing/results/chat 플로우 오버레이, 그 외 화면은 <Outlet/>으로 라우트
+// 렌더링 — 원래 App.tsx의 렌더 분기를 그대로 재현한다. (관리자 화면은 이 레이아웃과
+// 무관한 별도 번들이므로 여기서 더 이상 분기하지 않는다.)
 //
 // 문(대문) 열림 연출은 더 이상 "작명 시작하기" 클릭에 딸린 플로우가 아니라, 브라우저가
 // 사이트에 접속했을 때(세션당 1회) 로그인 여부와 무관하게 가장 먼저 노출된다. 새로고침하거나
@@ -196,18 +167,42 @@ function NotFoundRoute() {
 function RootLayout() {
   const { flow, request, chatQuestion, completeProcessing, cancelProcessing, openChat, backToResults, retryFromResults } =
     useNamingFlow();
-  const { isLoggedIn, isAdmin } = useAuth();
+  const { isLoggedIn } = useAuth();
   const onNavigate = useScreenNav();
   const screen = useCurrentScreen();
   const handleLogout = useHandleLogout();
-  const admin = isAdminScreen(screen);
   const [entryGateDone, setEntryGateDone] = useState(() => hasSeenGateThisSession());
 
+  const location = useLocation();
+
   // 원래 App.tsx는 화면(screen)이 바뀔 때마다 스크롤을 맨 위로 되돌렸다.
-  // HashRouter는 이 동작을 자동으로 해 주지 않으므로 동일하게 재현한다.
+  // BrowserRouter는 이 동작을 자동으로 해 주지 않으므로 동일하게 재현한다.
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [screen, flow]);
+
+  // ─── 실시간 접속자 하트비트 (Phase 9) ───
+  useEffect(() => {
+    let clientId = localStorage.getItem("mg_client_id");
+    if (!clientId) {
+      clientId = typeof crypto.randomUUID === "function" 
+        ? crypto.randomUUID() 
+        : Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem("mg_client_id", clientId);
+    }
+
+    const sendHeartbeat = () => {
+      if (USE_MOCK) return;
+      apiClient.post("/support/heartbeat", {
+        clientId,
+        currentPath: location.pathname + location.search + location.hash
+      }).catch(() => {});
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 30000);
+    return () => clearInterval(interval);
+  }, [location.pathname, location.search, location.hash, flow]);
 
   // 이 세션에서 아직 대문을 안 봤다면, 어떤 경로로 접속했든 다른 무엇보다 먼저 전체 화면으로 노출한다.
   if (!entryGateDone) {
@@ -230,15 +225,7 @@ function RootLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {!admin && (
-        <GNB
-          activeScreen={screen}
-          onNavigate={onNavigate}
-          isLoggedIn={isLoggedIn}
-          isAdmin={isAdmin}
-          onLogout={handleLogout}
-        />
-      )}
+      <GNB activeScreen={screen} onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
 
       {/* 화면 전환 진입 모션: 짧은 페이드 + 위로 슬라이드 (gate 제외) — key로 매번 재생 */}
       <div key={flow ?? screen} className="overflow-hidden" style={{ animation: "mg-hero-in 0.4s ease-out both" }}>
@@ -261,7 +248,9 @@ function RootLayout() {
 }
 
 // ─── 라우트 트리 ───────────────────────────────────────────────────────────────
-// 경로는 원래 해시 문자열(#/faq 등)과 1:1로 동일 — HashRouter이므로 기존 딥링크가 그대로 동작한다.
+// 경로는 원래 해시 문자열(#/faq 등)과 1:1로 동일 — BrowserRouter 전환 후에도 경로
+// 자체는 바뀌지 않았고 앞의 '#'만 사라졌으므로 기존 딥링크가 그대로 동작한다.
+// (구 '/#/...' 링크 하위호환은 index.html의 리다이렉트 스크립트가 처리한다.)
 
 export function AppRoutes() {
   return (
@@ -272,6 +261,7 @@ export function AppRoutes() {
         <Route path="login" element={<LoginRoute />} />
         <Route path="signup" element={<SignupRoute />} />
         <Route path="insights" element={<InsightsRoute />} />
+        <Route path="notices" element={<SupportNoticesRoute />} />
         <Route path="faq" element={<SupportFaqRoute />} />
         <Route path="contact" element={<SupportContactRoute />} />
         <Route path="terms" element={<PolicyTermsRoute />} />
@@ -299,39 +289,6 @@ export function AppRoutes() {
             <RequireAuth screen="history">
               <HistoryRoute />
             </RequireAuth>
-          }
-        />
-
-        <Route
-          path="adminDashboard"
-          element={
-            <RequireAdmin>
-              <AdminDashboardRoute />
-            </RequireAdmin>
-          }
-        />
-        <Route
-          path="adminContent"
-          element={
-            <RequireAdmin>
-              <AdminContentRoute />
-            </RequireAdmin>
-          }
-        />
-        <Route
-          path="adminUsers"
-          element={
-            <RequireAdmin>
-              <AdminUsersRoute />
-            </RequireAdmin>
-          }
-        />
-        <Route
-          path="adminSettings"
-          element={
-            <RequireAdmin>
-              <AdminSettingsRoute />
-            </RequireAdmin>
           }
         />
 

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { TERMS_SECTIONS, PRIVACY_SECTIONS } from "@/app/data/policyContent";
 import { GhostButton, PrimaryButton } from "@/app/components/common/Button";
 
@@ -46,12 +45,9 @@ export function PolicyAgreementModal({
     if (distanceFromBottom < 24) setReachedEnd(true);
   };
 
-  // NameDetailModal과 동일한 이유(상위 라우트 전환 애니메이션의 transform이 fixed의
-  // containing block을 바꿔버리는 문제)로 document.body에 포탈로 그려 항상 현재 뷰포트
-  // 기준 정중앙에 뜨도록 한다.
-  return createPortal(
+  return (
     <div
-      className="fixed inset-0 z-[60] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
       onClick={onClose}
     >
       <div
@@ -116,7 +112,6 @@ export function PolicyAgreementModal({
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

@@ -123,3 +123,13 @@ class UpdateProfileForm(forms.Form):
 
 class WithdrawForm(forms.Form):
     currentPassword = forms.CharField(min_length=8, max_length=128)
+
+
+class ContactForm(forms.Form):
+    """SupportScreen.tsx ContactSection의 클라이언트 검증과 규칙을 맞춘다."""
+
+    name = forms.CharField(max_length=50)
+    email = forms.EmailField()
+    topic = forms.CharField(max_length=50, required=False)
+    subject = forms.CharField(max_length=200)
+    message = forms.CharField(min_length=10)

@@ -4,11 +4,15 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vite build --mode admin",
+    "build:user": "vite build",
+    "build:admin": "vite build --mode admin",
     "dev": "vite",
+    "dev:admin": "vite --mode admin",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "3.9.1",
     "@radix-ui/react-accordion": "1.2.3",
     "@radix-ui/react-alert-dialog": "1.1.6",
     "@radix-ui/react-dialog": "1.1.6",
@@ -23,10 +27,12 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.30.4",
+    "react-hook-form": "7.54.2",
     "recharts": "^3.9.1",
     "sonner": "2.0.3",
     "tailwind-merge": "3.2.0",
-    "tw-animate-css": "1.3.8"
+    "tw-animate-css": "1.3.8",
+    "zod": "3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",

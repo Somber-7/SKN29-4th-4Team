@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+from naming.api import admin_api
+
 
 def health(request):
     return JsonResponse({"status": "ok", "service": "django"})
@@ -26,5 +28,6 @@ def health(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('naming.urls')),
+    path('api/admin/', admin_api.urls),  # 관리자 API (Django Ninja) — §10
     path('healthz', health),  # 내부 점검용 — nginx의 '/'는 React가 서빙하므로 외부 노출 경로 아님
 ]

@@ -1,0 +1,28 @@
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("naming", "0007_faqcategory_faq"),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="DailyMetric",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("date", models.DateField(unique=True)),
+                ("signups", models.PositiveIntegerField(default=0)),
+                ("logins", models.PositiveIntegerField(default=0)),
+                ("naming_requests", models.PositiveIntegerField(default=0)),
+                ("inquiries", models.PositiveIntegerField(default=0)),
+                ("answered_inquiries", models.PositiveIntegerField(default=0)),
+                ("source_distribution", models.JSONField(blank=True, default=dict)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+            ],
+            options={
+                "ordering": ["-date"],
+            },
+        ),
+    ]

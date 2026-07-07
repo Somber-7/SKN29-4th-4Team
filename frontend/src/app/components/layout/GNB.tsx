@@ -23,21 +23,24 @@ export function GNB({
   activeScreen,
   onNavigate,
   isLoggedIn = false,
-  isAdmin = false,
   onLogout,
 }: {
   activeScreen: Screen;
   onNavigate: (s: Screen) => void;
   isLoggedIn?: boolean;
-  isAdmin?: boolean;
   onLogout?: () => void;
 }) {
   const navigate = useNavigate();
+  // 관리자 화면은 별도 번들(`/manage/`)로 분리되어 사용자 GNB에서 진입점을
+  // 제공하지 않는다 — 경로 은닉이 보안 수단은 아니지만, 관리자 진입은 이제
+  // 이 SPA의 라우트가 아니므로(사용자 번들에 admin 코드 0바이트) 여기서 연결할
+  // 방법 자체가 없다. 관리자는 /manage/를 직접 접속한다.
   const items: NavItem[] = [
     { label: "서비스 소개", screen: "intro" },
     { label: "이름 트렌드", screen: "insights", className: "hidden sm:inline-block" },
+    { label: "공지사항", screen: "notices", match: ["notices"], className: "hidden sm:inline-block" },
     // 모바일에서는 GNB 대신 푸터 링크로 접근 (터치 타깃·여백 확보)
-    { label: "문의·FAQ", screen: "faq", match: ["faq", "contact"], className: "hidden md:inline-block" },
+    { label: "고객센터", screen: "faq", match: ["faq", "contact"], className: "hidden md:inline-block" },
     // 마이페이지는 로그인한 사용자에게만 노출 (작명 기록은 마이페이지 안에서 접근)
     ...(isLoggedIn
       ? [{
@@ -47,14 +50,6 @@ export function GNB({
           submenu: MY_PAGE_MENU,
         }]
       : [{ label: "로그인", screen: "login" as Screen }]),
-    // 관리자에게만 노출
-    ...(isAdmin
-      ? [{
-          label: "관리자",
-          screen: "adminDashboard" as Screen,
-          match: ["adminDashboard", "adminContent", "adminUsers", "adminSettings"] as Screen[],
-        }]
-      : []),
   ];
 
   const isActive = (item: NavItem) =>

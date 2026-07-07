@@ -27,7 +27,7 @@ export function extractLastNameCharMock(request: NameRequest): string | null {
 /** mock 모드에서 initialData로도 재사용하는 순수 계산 함수 — 성씨 반영 치환 로직 */
 export function computeMockNameResults(request: NameRequest): NameResult[] {
   const lastNameChar = extractLastNameCharMock(request);
-  const ln = lastNameChar ? LAST_NAMES[lastNameChar] : undefined;
+  const ln = lastNameChar ? LAST_NAMES[lastNameChar as keyof typeof LAST_NAMES] : undefined;
   return ln ? NAME_RESULTS.map((r) => ({ ...r, lastName: ln })) : NAME_RESULTS;
 }
 

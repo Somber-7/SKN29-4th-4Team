@@ -10,11 +10,13 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import type { Screen, AdminStat } from "@/app/types";
+import type { AdminStat } from "@/app/types";
 import { useAdminDashboard } from "@/app/hooks/useAdminDashboard";
 import { AdminLayout } from "@/app/components/admin/AdminLayout";
 import { Reveal } from "@/app/components/common/Reveal";
 import { useCountUp } from "@/app/hooks/useCountUp";
+import { useAdminActiveUsers } from "@/app/hooks/useAdminApiUsage";
+
 
 // 하드코딩 hex 대신 theme.css 토큰을 직접 참조 (recharts SVG 속성은 var()를 그대로 해석한다)
 const BRAND = "var(--color-primary)";
@@ -51,27 +53,42 @@ function StatCard({ stat }: { stat: AdminStat }) {
   );
 }
 
-export function AdminDashboardScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
+export function AdminDashboardScreen() {
   const { data } = useAdminDashboard();
+  const { data: activeUsersData } = useAdminActiveUsers();
   const stats = data?.stats ?? [];
   const weeklyRequests = data?.weeklyRequests ?? [];
   const sourceDistribution = data?.sourceDistribution ?? [];
   const recentRequests = data?.recentRequests ?? [];
 
+
   return (
     <AdminLayout
-      active="adminDashboard"
       title="대시보드"
       description="오늘의 작명 요청과 서비스 지표를 한눈에 확인합니다."
-      onNavigate={onNavigate}
     >
       {/* 요약 카드 — 카운트업 + 스태거 등장 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
         {stats.map((stat, i) => (
           <Reveal key={stat.label} delay={i * 70}>
             <StatCard stat={stat} />
           </Reveal>
         ))}
+        <Reveal delay={stats.length * 70}>
+          <div className="bg-white border border-border p-5 h-full transition-all duration-300 hover:border-switch-background hover:shadow-[0_4px_24px_rgba(107,78,46,0.08)] flex flex-col justify-between">
+            <div>
+              <p className="text-xs text-caption mb-2 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-pine animate-pulse" />
+                실시간 로그인 접속자
+              </p>
+              <p className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
+                {activeUsersData?.loggedInCount ?? 0}
+                <span className="text-sm font-normal text-ink ml-1">명</span>
+              </p>
+            </div>
+            <p className="text-[10px] text-caption mt-2 pt-2 border-t border-border/40">최근 3분 내 활동 유저 수</p>
+          </div>
+        </Reveal>
       </div>
 
       {/* 차트 영역 — ResponsiveContainer로 유동 리사이즈 */}
@@ -142,23 +159,25 @@ export function AdminDashboardScreen({ onNavigate }: { onNavigate: (s: Screen) =
               <h2 className="text-sm font-medium text-foreground">최근 작명 요청</h2>
               <p className="text-[11px] text-caption mt-0.5">실시간 최근 5건</p>
             </div>
+            {/* 
             <button
-              onClick={() => onNavigate("adminContent")}
+              onClick={() => navigate("/notices")}
               className="text-xs text-primary hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
-              콘텐츠 관리 →
+              공지사항 관리 →
             </button>
+            */}
           </div>
           <div className="relative">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead>
                   <tr className="border-y border-border bg-secondary/50 text-left">
-                    <th scope="col" className="px-5 py-2.5 text-xs font-medium text-caption">시각</th>
-                    <th scope="col" className="px-4 py-2.5 text-xs font-medium text-caption">요청자</th>
+                    <th scope="col" className="px-5 py-2.5 text-xs font-medium text-caption whitespace-nowrap">시각</th>
+                    <th scope="col" className="px-4 py-2.5 text-xs font-medium text-caption whitespace-nowrap">요청자</th>
                     <th scope="col" className="px-4 py-2.5 text-xs font-medium text-caption w-full">요청 내용</th>
                     <th scope="col" className="px-4 py-2.5 text-xs font-medium text-caption whitespace-nowrap">추천</th>
-                    <th scope="col" className="px-5 py-2.5 text-xs font-medium text-caption">상태</th>
+                    <th scope="col" className="px-5 py-2.5 text-xs font-medium text-caption whitespace-nowrap">상태</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -198,3 +217,4 @@ export function AdminDashboardScreen({ onNavigate }: { onNavigate: (s: Screen) =
       </AdminLayout>
   );
 }
+

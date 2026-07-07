@@ -29,19 +29,52 @@ _stub_fastmcp()
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "mcp"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "graph"))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from naming_graph import build_graph
+import requests
+import time
 
 app = FastAPI(title="작명 QA API")
 _graph = None
 
 
+def log_usage_to_django(
+    endpoint: str,
+    success: bool,
+    statusCode: int,
+    latencyMs: int,
+    errorType: str = "",
+    modelName: str = "",
+    promptTokens: int = 0,
+    completionTokens: int = 0,
+    estimatedCost: float = 0.0
+):
+    try:
+        secret = os.environ.get("DJANGO_SECRET_KEY", "")
+        url = "http://django:8000/api/support/log-api-usage"
+        payload = {
+            "endpoint": endpoint,
+            "success": success,
+            "statusCode": statusCode,
+            "latencyMs": latencyMs,
+            "errorType": errorType,
+            "modelName": modelName,
+            "promptTokens": promptTokens,
+            "completionTokens": completionTokens,
+            "estimatedCost": estimatedCost
+        }
+        headers = {"X-Internal-Secret": secret}
+        requests.post(url, json=payload, headers=headers, timeout=5)
+    except Exception as e:
+        print(f"Failed to log API usage: {e}", file=sys.stderr)
+
+
 # ─────────────────────────────────────────────
-# /ask (자유 텍스트 QA) — 기존 그대로 유지
+# /ask (자유 텍스트 QA)
 # ─────────────────────────────────────────────
 
 class AskRequest(BaseModel):
@@ -65,20 +98,51 @@ async def health():
 
 
 @app.post("/ask", response_model=AskResponse)
-async def ask(req: AskRequest):
-    state = {
-        "query": req.query,
-        "context": "",
-        "next_action": "generate",
-        "answer": "",
-        "iterations": 0,
-        "used_tools": [],
-        "collections": [],
-        "name_length": 2,
-        "surname_hanja": "",
-    }
-    result = await _graph.ainvoke(state)
-    return AskResponse(answer=result.get("answer", "").strip(), context=result.get("context", ""))
+async def ask(req: AskRequest, background_tasks: BackgroundTasks):
+    start_time = time.time()
+    try:
+        state = {
+            "query": req.query,
+            "context": "",
+            "next_action": "generate",
+            "answer": "",
+            "iterations": 0,
+            "used_tools": [],
+            "collections": [],
+            "name_length": 2,
+            "surname_hanja": "",
+        }
+        result = await _graph.ainvoke(state)
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        prompt_tokens = 300
+        completion_tokens = 200
+        estimated_cost = (prompt_tokens * 0.15 + completion_tokens * 0.60) / 1000000
+        
+        background_tasks.add_task(
+            log_usage_to_django,
+            endpoint="/ask",
+            success=True,
+            statusCode=200,
+            latencyMs=latency_ms,
+            modelName="gpt-4o-mini",
+            promptTokens=prompt_tokens,
+            completionTokens=completion_tokens,
+            estimatedCost=estimated_cost
+        )
+        return AskResponse(answer=result.get("answer", "").strip(), context=result.get("context", ""))
+    except Exception as exc:
+        latency_ms = int((time.time() - start_time) * 1000)
+        background_tasks.add_task(
+            log_usage_to_django,
+            endpoint="/ask",
+            success=False,
+            statusCode=500,
+            latencyMs=latency_ms,
+            errorType=type(exc).__name__,
+            modelName="gpt-4o-mini"
+        )
+        raise exc
 
 
 @app.get("/graph/ohaeng")
@@ -188,16 +252,54 @@ async def _generate_structured(query: str) -> list[NameResult]:
 
 
 @app.post("/names/generate")
-async def generate_names(req: dict):
+async def generate_names(req: dict, background_tasks: BackgroundTasks):
+    start_time = time.time()
     query = _build_structured_query(req)
     if not query.strip():
         return JSONResponse(status_code=400, content={"message": "요청 내용이 비어 있습니다.", "detail": None})
 
     try:
         results = await asyncio.wait_for(_generate_structured(query), timeout=90)
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        prompt_tokens = 500
+        completion_tokens = 300
+        estimated_cost = (prompt_tokens * 0.15 + completion_tokens * 0.60) / 1000000
+        
+        background_tasks.add_task(
+            log_usage_to_django,
+            endpoint="/names/generate",
+            success=True,
+            statusCode=200,
+            latencyMs=latency_ms,
+            modelName="gpt-4o-mini",
+            promptTokens=prompt_tokens,
+            completionTokens=completion_tokens,
+            estimatedCost=estimated_cost
+        )
     except asyncio.TimeoutError:
+        latency_ms = int((time.time() - start_time) * 1000)
+        background_tasks.add_task(
+            log_usage_to_django,
+            endpoint="/names/generate",
+            success=False,
+            statusCode=504,
+            latencyMs=latency_ms,
+            errorType="TimeoutError",
+            modelName="gpt-4o-mini"
+        )
         return JSONResponse(status_code=504, content={"message": "작명 생성 시간이 초과되었습니다.", "detail": None})
     except Exception as exc:
+        latency_ms = int((time.time() - start_time) * 1000)
+        background_tasks.add_task(
+            log_usage_to_django,
+            endpoint="/names/generate",
+            success=False,
+            statusCode=502,
+            latencyMs=latency_ms,
+            errorType=type(exc).__name__,
+            modelName="gpt-4o-mini"
+        )
         return JSONResponse(status_code=502, content={"message": "작명 생성에 실패했습니다.", "detail": str(exc)})
 
     return [r.model_dump() for r in results]

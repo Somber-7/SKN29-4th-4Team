@@ -7,13 +7,15 @@ from django.contrib.auth import logout as django_logout
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
-from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from django.db.models import Q
 
 from .forms import (
     ChangePasswordForm,
     CheckEmailForm,
+    ContactForm,
     ForgotPasswordForm,
     LoginForm,
     PasswordResetIdentityForm,
@@ -21,11 +23,30 @@ from .forms import (
     UpdateProfileForm,
     WithdrawForm,
 )
-from .models import NamingHistory, UserConsent
+from .models import ContactInquiry, FAQ, LoginHistory, NamingHistory, Notice, Setting, UserProfile
+from .user_lifecycle import get_or_create_profile
+from functools import lru_cache
 
 
 def _error(message, status=400, detail=None):
     return JsonResponse({"message": message, "detail": detail}, status=status)
+
+
+def _client_ip(request):
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+@lru_cache(maxsize=1)
+def _signup_requires_approval() -> bool:
+    """관리자페이지 개발 계획서 §7 — 기본값 false(자동 승인), 관리자가 설정 화면에서
+    ServiceSetting(key="signup_requires_approval")을 켜면 승인 대기로 전환된다."""
+    setting = Setting.objects.filter(key="signup_requires_approval").first()
+    if not setting:
+        return False
+    return bool(setting.value.get("enabled", False))
 
 
 def _user_to_auth_user(user):
@@ -43,13 +64,6 @@ def _parse_json(request):
         return json.loads(request.body or b"{}")
     except json.JSONDecodeError:
         return {}
-
-
-def _client_ip(request):
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR")
 
 
 def api_login_required(view_func):
@@ -75,11 +89,28 @@ def login_view(request):
         return _error("입력값이 올바르지 않습니다.", 400, form.errors)
 
     username = form.cleaned_data["username"]
+    # 계정 존재 여부와 무관하게 아이디/비번 불일치는 항상 같은 메시지·401을 반환한다
+    # (기존 정책 유지). 다만 이미 존재하는 계정에 한해서만 실패 이력을 남긴다 —
+    # 존재하지 않는 아이디까지 기록하면 무의미한 로그가 쌓인다.
+    matched_user = User.objects.filter(username__iexact=username).first()
     user = authenticate(request, username=username, password=form.cleaned_data["password"])
     if user is None:
+        if matched_user:
+            LoginHistory.objects.create(
+                user=matched_user,
+                ip=_client_ip(request),
+                user_agent=request.META.get("HTTP_USER_AGENT", "")[:300],
+                success=False,
+            )
         return _error("아이디 또는 비밀번호를 확인해 주세요.", 401)
 
     django_login(request, user)
+    LoginHistory.objects.create(
+        user=user,
+        ip=_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", "")[:300],
+        success=True,
+    )
     return JsonResponse(_user_to_auth_user(user))
 
 
@@ -113,16 +144,19 @@ def signup_view(request):
         first_name=form.cleaned_data["name"],
     )
 
+    profile = get_or_create_profile(user)
+    if _signup_requires_approval():
+        profile.approval_status = UserProfile.Approval.PENDING
+    
     now = timezone.now()
-    UserConsent.objects.create(
-        user=user,
-        terms_version=form.cleaned_data["termsVersion"],
-        privacy_version=form.cleaned_data["privacyVersion"],
-        terms_agreed_at=now,
-        privacy_agreed_at=now,
-        agreed_ip=_client_ip(request),
-        user_agent=request.META.get("HTTP_USER_AGENT", "")[:1000],
-    )
+    profile.terms_version = form.cleaned_data["termsVersion"]
+    profile.privacy_version = form.cleaned_data["privacyVersion"]
+    profile.terms_agreed_at = now
+    profile.privacy_agreed_at = now
+    profile.agreed_ip = _client_ip(request)
+    profile.user_agent = request.META.get("HTTP_USER_AGENT", "")[:1000]
+    profile.save(update_fields=["approval_status", "terms_version", "privacy_version", "terms_agreed_at", "privacy_agreed_at", "agreed_ip", "user_agent"])
+
     return JsonResponse({}, status=201)
 
 
@@ -203,6 +237,8 @@ def me_view(request):
             return _error("입력값이 올바르지 않습니다.", 400, form.errors)
         if not request.user.check_password(form.cleaned_data["currentPassword"]):
             return _error("현재 비밀번호가 올바르지 않습니다.", 400)
+        # 이제 완전 삭제(하드 삭제) 정책을 사용합니다.
+        # 연쇄 삭제(CASCADE)로 인해 작명 기록, 로그인 이력 등도 삭제됩니다.
         request.user.delete()
         django_logout(request)
         return HttpResponse(status=204)
@@ -214,6 +250,24 @@ def me_view(request):
     request.user.email = form.cleaned_data["email"]
     request.user.save(update_fields=["email"])
     return JsonResponse(_user_to_auth_user(request.user))
+
+
+@require_http_methods(["POST"])
+def contact_submit_view(request):
+    """공개 문의 접수 — 로그인 여부와 무관하게 누구나 제출할 수 있다(§9 문의 관리).
+    관리자페이지의 문의 관리 화면은 이렇게 쌓인 ContactInquiry를 그대로 목록/답변한다."""
+    form = ContactForm(_parse_json(request))
+    if not form.is_valid():
+        return _error("입력값이 올바르지 않습니다.", 400, form.errors)
+
+    ContactInquiry.objects.create(
+        name=form.cleaned_data["name"],
+        email=form.cleaned_data["email"],
+        topic=form.cleaned_data.get("topic", ""),
+        subject=form.cleaned_data["subject"],
+        message=form.cleaned_data["message"],
+    )
+    return JsonResponse({}, status=201)
 
 
 @api_login_required
@@ -232,3 +286,88 @@ def change_password_view(request):
     request.user.save(update_fields=["password"])
     update_session_auth_hash(request, request.user)
     return JsonResponse({}, status=200)
+
+
+@require_http_methods(["GET"])
+def notice_list_view(request):
+    now = timezone.now()
+    qs = Notice.objects.filter(
+        status=Notice.Status.PUBLISHED
+    ).filter(
+        Q(start_at__isnull=True) | Q(start_at__lte=now)
+    ).filter(
+        Q(end_at__isnull=True) | Q(end_at__gte=now)
+    ).order_by("-is_pinned", "-updated_at")
+    
+    items = []
+    for notice in qs:
+        items.append({
+            "id": notice.id,
+            "title": notice.title,
+            "body": notice.body,
+            "isPinned": notice.is_pinned,
+            "createdAt": notice.created_at.isoformat(),
+            "updatedAt": notice.updated_at.isoformat(),
+        })
+    return JsonResponse({"items": items})
+
+
+@require_http_methods(["GET"])
+def notice_detail_view(request, notice_id):
+    now = timezone.now()
+    try:
+        notice = Notice.objects.get(
+            pk=notice_id,
+            status=Notice.Status.PUBLISHED
+        )
+        if notice.start_at and notice.start_at > now:
+            return _error("공지를 찾을 수 없습니다.", 404)
+        if notice.end_at and notice.end_at < now:
+            return _error("공지를 찾을 수 없습니다.", 404)
+    except Notice.DoesNotExist:
+        return _error("공지를 찾을 수 없습니다.", 404)
+
+    return JsonResponse({
+        "id": notice.id,
+        "title": notice.title,
+        "body": notice.body,
+        "isPinned": notice.is_pinned,
+        "createdAt": notice.created_at.isoformat(),
+        "updatedAt": notice.updated_at.isoformat(),
+    })
+
+
+@require_http_methods(["GET"])
+def faq_list_view(request):
+    qs = FAQ.objects.filter(is_active=True).order_by("category", "order", "-updated_at")
+    
+    items = []
+    category_labels = {}
+    
+    CATEGORY_MAP = {
+        "service": "서비스 이용",
+        "evidence": "작명 근거",
+        "account": "계정·이용권"
+    }
+    
+    for faq in qs:
+        cat_name = faq.category
+        if cat_name not in category_labels:
+            category_labels[cat_name] = CATEGORY_MAP.get(cat_name, cat_name)
+            
+        items.append({
+            "id": faq.id,
+            "category": cat_name,
+            "categorySlug": cat_name,
+            "question": faq.question,
+            "answer": faq.answer,
+        })
+        
+    return JsonResponse({
+        "items": items,
+        "categoryLabels": category_labels
+    })
+
+
+
+
