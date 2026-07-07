@@ -260,7 +260,10 @@ def contact_submit_view(request):
     if not form.is_valid():
         return _error("입력값이 올바르지 않습니다.", 400, form.errors)
 
+    user = request.user if request.user.is_authenticated else None
+
     ContactInquiry.objects.create(
+        user=user,
         name=form.cleaned_data["name"],
         email=form.cleaned_data["email"],
         topic=form.cleaned_data.get("topic", ""),
@@ -268,6 +271,25 @@ def contact_submit_view(request):
         message=form.cleaned_data["message"],
     )
     return JsonResponse({}, status=201)
+
+@api_login_required
+@require_http_methods(["GET"])
+def inquiries_view(request):
+    """사용자의 1:1 문의 내역을 반환합니다."""
+    qs = ContactInquiry.objects.filter(user=request.user).order_by("-created_at")
+    items = []
+    for inquiry in qs:
+        items.append({
+            "id": inquiry.id,
+            "topic": inquiry.topic,
+            "subject": inquiry.subject,
+            "message": inquiry.message,
+            "status": inquiry.status,
+            "adminReply": inquiry.admin_reply,
+            "createdAt": inquiry.created_at.isoformat(),
+            "answeredAt": inquiry.answered_at.isoformat() if inquiry.answered_at else None,
+        })
+    return JsonResponse(items, safe=False)
 
 
 @require_http_methods(["POST"])

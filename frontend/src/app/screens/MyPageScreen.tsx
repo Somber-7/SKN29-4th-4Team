@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, UserRound, KeyRound, ScrollText, ShieldAlert } from "lucide-react";
+import { Eye, EyeOff, UserRound, KeyRound, ScrollText, ShieldAlert, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/api/client";
 import { authApi } from "@/api/auth";
 import type { AuthUser, MyPageSection, Screen } from "@/app/types";
 import { useHistory } from "@/app/hooks/useHistory";
+import { useInquiries } from "@/app/hooks/useInquiries";
 import { isValidEmail } from "@/app/utils/validation";
 import { PageHeader } from "@/app/components/common/PageHeader";
 import { Reveal } from "@/app/components/common/Reveal";
@@ -30,6 +31,7 @@ const MY_PAGE_TABS: { section: MyPageSection; label: string }[] = [
   { section: "profile", label: "프로필 설정" },
   { section: "password", label: "비밀번호 변경" },
   { section: "history", label: "작명 기록" },
+  { section: "inquiries", label: "문의 내역" },
   { section: "account", label: "계정 관리" },
 ];
 
@@ -118,6 +120,7 @@ export function MyPageScreen({
   const [withdrawing, setWithdrawing] = useState(false);
 
   const { data: historyEntries = [] } = useHistory();
+  const { data: inquiries = [] } = useInquiries();
   const totalRequests = historyEntries.length;
   const totalSaved = historyEntries.reduce((sum, e) => sum + e.savedCount, 0);
   const recentEntries = historyEntries.slice(0, 5);
@@ -213,7 +216,7 @@ export function MyPageScreen({
 
         <nav
           aria-label="마이페이지 메뉴"
-          className="mb-8 grid grid-cols-2 sm:grid-cols-4 border border-border bg-white"
+          className="mb-8 grid grid-cols-2 sm:grid-cols-5 border border-border bg-white"
         >
           {MY_PAGE_TABS.map((item) => {
             const selected = activeSection === item.section;
@@ -504,6 +507,63 @@ export function MyPageScreen({
                 <div className="flex justify-end">
                   <GhostButton onClick={() => onNavigate("history")} className="px-5 py-2.5 text-xs">
                     전체 기록 보기 →
+                  </GhostButton>
+                </div>
+              </SectionCard>
+            </Reveal>
+            )}
+
+            {/* 문의 내역 */}
+            {activeSection === "inquiries" && (
+            <Reveal delay={120}>
+              <SectionCard
+                icon={MessageSquare}
+                title="문의 내역"
+                description="고객센터에 남기신 문의 내역과 답변을 확인할 수 있습니다."
+              >
+                {inquiries.length === 0 ? (
+                  <div className="py-10 text-center border border-border bg-muted/20">
+                    <p className="text-sm text-caption">등록된 문의 내역이 없습니다.</p>
+                  </div>
+                ) : (
+                  <ul className="space-y-4">
+                    {inquiries.map((inq) => (
+                      <li key={inq.id} className="border border-border bg-white">
+                        <div className="px-5 py-4 border-b border-border">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-sm bg-muted text-secondary-foreground">
+                              {inq.topic || "일반 문의"}
+                            </span>
+                            <span className={`text-[11px] font-medium ${
+                              inq.status === "answered" ? "text-primary" : "text-caption"
+                            }`}>
+                              {inq.status === "answered" ? "답변 완료" : (inq.status === "in_progress" ? "처리 중" : "접수 완료")}
+                            </span>
+                          </div>
+                          <p className="text-sm font-semibold text-foreground break-keep">{inq.subject}</p>
+                          <p className="text-xs text-caption mt-1">{inq.createdAt.split("T")[0]}</p>
+                          <div className="mt-3 text-xs text-ink whitespace-pre-wrap leading-relaxed bg-muted/20 p-3">
+                            {inq.message}
+                          </div>
+                        </div>
+                        {inq.status === "answered" && inq.adminReply && (
+                          <div className="px-5 py-4 bg-primary/5">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-semibold text-primary">명가작명소 고객센터</span>
+                              <span className="text-[11px] text-caption">{inq.answeredAt?.split("T")[0]}</span>
+                            </div>
+                            <div className="text-xs text-ink whitespace-pre-wrap leading-relaxed">
+                              {inq.adminReply}
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex justify-end mt-4">
+                  <GhostButton onClick={() => onNavigate("contact")} className="px-5 py-2.5 text-xs">
+                    새 문의 남기기 →
                   </GhostButton>
                 </div>
               </SectionCard>

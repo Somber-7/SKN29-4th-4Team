@@ -154,6 +154,7 @@ class ContactInquiry(TimeStamped):
         IN_PROGRESS = "in_progress", "처리 중"
         ANSWERED = "answered", "답변 완료"
 
+    user = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="inquiries")
     name = models.CharField(max_length=50)
     email = models.EmailField()
     topic = models.CharField(max_length=50, blank=True)

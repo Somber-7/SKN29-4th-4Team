@@ -26,7 +26,7 @@ export type Screen =
   | "adminUsers"
   | "adminSettings";
 
-export type MyPageSection = "profile" | "password" | "history" | "account";
+export type MyPageSection = "profile" | "password" | "history" | "inquiries" | "account";
 
 /** 관리자 화면 여부 — App에서 GNB 숨김/AdminLayout 분기에 사용 */
 export function isAdminScreen(s: Screen): boolean {
@@ -128,6 +128,19 @@ export interface HistoryEntry {
   /** 추천 결과 중 대표 이름 미리보기 */
   topName: { hanja: string; hangul: string };
   status: "완료" | "진행 중";
+}
+
+// ─── 1:1 문의 내역 (User MyPage) ────────────────────────────────────────────────
+
+export interface UserInquiryEntry {
+  id: number;
+  topic: string;
+  subject: string;
+  message: string;
+  status: "received" | "in_progress" | "answered";
+  adminReply: string;
+  createdAt: string;
+  answeredAt: string | null;
 }
 
 // ─── 관리자 (Admin, UI 전용 더미) ─────────────────────────────────────────────

@@ -1,7 +1,7 @@
 // ─── 인증 · 마이페이지 도메인 API (Django 세션) ───────────────────────────────
 
 import { ApiError, USE_MOCK_AUTH, apiClient, mockDelay } from "./client";
-import type { AuthUser, HistoryEntry } from "@/app/types";
+import type { AuthUser, HistoryEntry, UserInquiryEntry } from "@/app/types";
 import { HISTORY_ENTRIES } from "./mock/history.mock";
 
 export interface LoginCredentials {
@@ -52,6 +52,7 @@ export interface AuthApi {
   resetPassword(input: PasswordResetInput): Promise<void>;
   /** 작명 기록 (History · MyPage 화면 공용) */
   getHistory(): Promise<HistoryEntry[]>;
+  getInquiries(): Promise<UserInquiryEntry[]>;
   updateProfile(patch: ProfilePatch): Promise<AuthUser>;
   changePassword(input: { currentPassword: string; nextPassword: string }): Promise<void>;
   withdraw(input: { currentPassword: string }): Promise<void>;
@@ -101,6 +102,9 @@ const mockAdapter: AuthApi = {
   async getHistory() {
     return mockDelay(HISTORY_ENTRIES, 0);
   },
+  async getInquiries() {
+    return mockDelay([], 0);
+  },
   async updateProfile(patch) {
     await mockDelay(undefined, 600);
     return {
@@ -135,6 +139,7 @@ const realAdapter: AuthApi = {
   verifyPasswordResetAccount: (input) => apiClient.post<void>("/auth/verify-password-reset-account", input),
   resetPassword: (input) => apiClient.post<void>("/auth/forgot-password", input),
   getHistory: () => apiClient.get<HistoryEntry[]>("/me/history"),
+  getInquiries: () => apiClient.get<UserInquiryEntry[]>("/me/inquiries"),
   updateProfile: (patch) => apiClient.patch<AuthUser>("/me", patch),
   changePassword: (input) => apiClient.post<void>("/me/change-password", input),
   withdraw: (input) => apiClient.delete<void>("/me", { body: input }),
