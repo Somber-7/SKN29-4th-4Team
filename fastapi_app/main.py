@@ -336,17 +336,71 @@ async def generate_names(req: dict):
 @app.get("/names/sample-preview")
 async def sample_preview():
     # 랜딩 화면용 고정 예시 — LLM 호출 없이 즉시 응답 (속도 우선)
-    sample = NameResult(
-        id=1,
-        lastName=CharBreakdown(char="金", reading="김", meaning="성씨 김", strokes=8, element="금"),
-        hanja="敏俊",
-        hangul="민준",
-        ruby=[
-            CharBreakdown(char="敏", reading="민", meaning="민첩할", strokes=11, element="수"),
-            CharBreakdown(char="俊", reading="준", meaning="준걸", strokes=9, element="화"),
-        ],
-        sukgyeok="상생이 잘 이루어진 조합입니다.",
-        sukgyeokDetail=[],
-        sources=[{"type": "hanja", "label": "인명용 한자 예시"}],
-    )
-    return [sample.model_dump()]
+    return [
+        NameResult(
+            id=1,
+            lastName=CharBreakdown(char="尹", reading="윤", meaning="다스릴 윤", strokes=4, element="수"),
+            hanja="道賢",
+            hangul="도현",
+            ruby=[
+                CharBreakdown(char="道", reading="도", meaning="길 도", strokes=12, element="수"),
+                CharBreakdown(char="賢", reading="현", meaning="어질 현", strokes=15, element="토"),
+            ],
+            sukgyeok="27수 · 吉",
+            sukgyeokDetail=[
+                SukgyeokDetail(name="원격(元格)", value=27, fortune="대길"),
+                SukgyeokDetail(name="형격(亨格)", value=16, fortune="길"),
+                SukgyeokDetail(name="이격(利格)", value=19, fortune="중길"),
+                SukgyeokDetail(name="정격(貞格)", value=31, fortune="대길"),
+            ],
+            sources=[
+                {"type": "hanja", "label": "한자 자원오행"},
+                {"type": "suri", "label": "81수리"},
+                {"type": "beopryeong", "label": "법령: 인명용 한자"},
+            ],
+        ).model_dump(),
+        NameResult(
+            id=3,
+            lastName=CharBreakdown(char="尹", reading="윤", meaning="다스릴 윤", strokes=4, element="수"),
+            hanja="智皓",
+            hangul="지호",
+            ruby=[
+                CharBreakdown(char="智", reading="지", meaning="슬기 지", strokes=12, element="목"),
+                CharBreakdown(char="皓", reading="호", meaning="밝을 호", strokes=12, element="수"),
+            ],
+            sukgyeok="24수 · 大吉",
+            sukgyeokDetail=[
+                SukgyeokDetail(name="원격(元格)", value=24, fortune="대길"),
+                SukgyeokDetail(name="형격(亨格)", value=16, fortune="길"),
+                SukgyeokDetail(name="이격(利格)", value=16, fortune="길"),
+                SukgyeokDetail(name="정격(貞格)", value=28, fortune="대길"),
+            ],
+            sources=[
+                {"type": "hanja", "label": "한자 자원오행"},
+                {"type": "suri", "label": "81수리"},
+                {"type": "beopryeong", "label": "법령: 인명용 한자"},
+            ],
+        ).model_dump(),
+        NameResult(
+            id=99,
+            lastName=CharBreakdown(char="尹", reading="윤", meaning="다스릴 윤", strokes=4, element="수"),
+            hanja="瑞姸",
+            hangul="서연",
+            ruby=[
+                CharBreakdown(char="瑞", reading="서", meaning="상서 서", strokes=13, element="수"),
+                CharBreakdown(char="姸", reading="연", meaning="고울 연", strokes=9, element="화"),
+            ],
+            sukgyeok="22수 · 吉",
+            sukgyeokDetail=[
+                SukgyeokDetail(name="원격(元格)", value=22, fortune="길"),
+                SukgyeokDetail(name="형격(亨格)", value=17, fortune="길"),
+                SukgyeokDetail(name="이격(利格)", value=13, fortune="대길"),
+                SukgyeokDetail(name="정격(貞格)", value=26, fortune="중길"),
+            ],
+            sources=[
+                {"type": "hanja", "label": "한자 자원오행"},
+                {"type": "suri", "label": "81수리"},
+                {"type": "beopryeong", "label": "법령: 인명용 한자"},
+            ],
+        ).model_dump(),
+    ]

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Screen } from "@/app/types";
-import { SAMPLE_PREVIEW_RESULTS } from "@/api/mock/names.mock";
+import { useSamplePreviewNames } from "@/app/hooks/useSamplePreviewNames";
 import { NameCard } from "@/app/components/common/NameCard";
 import { PrimaryButton } from "@/app/components/common/Button";
 import { Footer } from "@/app/components/layout/Footer";
@@ -11,7 +11,7 @@ export function LandingScreen({
   onNavigate: (s: Screen) => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
-  const previewResults = SAMPLE_PREVIEW_RESULTS;
+  const { data: previewResults = [] } = useSamplePreviewNames();
   return (
     <div className="mt-16 h-[calc(100dvh-4rem)] overflow-y-scroll snap-y snap-proximity bg-background">
       {/* Hero — fills exactly the first viewport below GNB */}
