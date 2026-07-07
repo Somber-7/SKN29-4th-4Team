@@ -34,10 +34,14 @@ export function ResultsScreen({
   request,
   onChat,
   onRetry,
+  onRegenerate,
 }: {
   request: NameRequest;
   onChat: (question?: string) => void;
+  /** "조건 수정" — 입력 화면으로 복귀 */
   onRetry: () => void;
+  /** "다시 추천" — 같은 조건 + 현재 결과 이름 제외(excludeNames)로 재생성 */
+  onRegenerate: (excludeNames: string[]) => void;
 }) {
   const [streaming, setStreaming] = useState(true);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -149,7 +153,10 @@ export function ResultsScreen({
           </div>
           {!streaming && (
             <div className="flex gap-2">
-              <GhostButton onClick={onRetry} className="px-4 py-2 text-xs text-label rounded-lg">
+              <GhostButton
+                onClick={() => onRegenerate(results.map((r) => r.hangul))}
+                className="px-4 py-2 text-xs text-label rounded-lg"
+              >
                 다시 추천
               </GhostButton>
               <PrimaryButton onClick={() => onChat()} className="px-4 py-2 text-xs">
