@@ -1,6 +1,8 @@
 """fastapi_app/main.py — 작명 QA FastAPI 서버. naming_graph.py를 읽기 전용으로 import."""
 import asyncio
+import functools
 import os
+import re
 import sys
 import types
 from typing import Literal, Optional
@@ -34,10 +36,19 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
-from naming_graph import build_graph
+import rag_server
+from naming_graph import build_graph, _resolve_surname, _SURNAME_OHAENG
 
 app = FastAPI(title="작명 QA API")
 _graph = None
+
+
+class NeedMoreInfoError(Exception):
+    """파이프라인이 이름 대신 반문(clarify)을 반환한 경우 — 422로 안내를 전달한다."""
+
+    def __init__(self, guidance: str):
+        super().__init__(guidance)
+        self.guidance = guidance
 
 
 # ─────────────────────────────────────────────
@@ -144,15 +155,52 @@ _STRUCTURE_PROMPT = """당신은 아래 '완성된 추천 결과'를 정해진 J
 '완성된 추천 결과'에 나온 이름만 그대로 스키마로 변환하세요 — 이름을 추가하거나 빼지 마세요. id는 1부터 순번을 매깁니다."""
 
 
+# 동음이의 성씨의 대표 한자(인구 최다 본관 기준, 2015 통계청 성씨 통계).
+# 구조화 요청은 한글 성씨만 오므로, 한자를 명시해 파이프라인의 clarify(동음이의 반문)를 차단한다.
+# 결과 카드의 lastName.char로 선택된 한자가 그대로 노출된다.
+_DEFAULT_SURNAME_HANJA = {
+    "김": "金", "이": "李", "박": "朴", "최": "崔", "정": "鄭", "강": "姜",
+    "조": "趙", "윤": "尹", "장": "張", "임": "林", "한": "韓", "오": "吳",
+    "서": "徐", "신": "申", "권": "權", "황": "黃", "안": "安", "송": "宋",
+    "전": "全", "홍": "洪", "유": "柳", "고": "高", "문": "文", "양": "梁",
+    "손": "孫", "배": "裵", "백": "白", "허": "許", "남": "南", "심": "沈",
+    "노": "盧", "하": "河", "곽": "郭", "성": "成", "차": "車", "주": "朱",
+    "우": "禹", "구": "具", "민": "閔", "진": "陳", "지": "池", "엄": "嚴",
+    "채": "蔡", "원": "元", "천": "千", "방": "方", "공": "孔", "현": "玄",
+    "함": "咸", "변": "卞", "염": "廉", "여": "呂", "추": "秋", "도": "都",
+    "소": "蘇", "석": "石", "선": "宣", "설": "薛", "마": "馬", "길": "吉",
+}
+
+
+def _inject_default_surname_hanja(query: str) -> str:
+    """자연어 쿼리의 '○씨'에 한자 병기가 없으면 대표 한자를 주입해
+    동음이의 성씨 clarify(반문)를 차단한다. 예: '이씨 딸' → '이씨(李) 딸'
+    사용자가 이미 한자를 쓴 경우(오행·吉凶 표기 제외)는 임의 대체하지 않는다."""
+    non_element_hanja = re.sub(r'[木火土金水吉凶]', '', query)
+    if re.search(r'[一-鿿]', non_element_hanja):
+        return query
+    m = re.search(r'([가-힣]{1,2})씨', query)
+    if not m:
+        return query
+    hanja = _DEFAULT_SURNAME_HANJA.get(m.group(1))
+    if not hanja:
+        return query
+    return query[:m.end()] + f"({hanja})" + query[m.end():]
+
+
 def _build_structured_query(req: dict) -> str:
     if req.get("type") == "natural":
-        return req.get("query", "")
+        return _inject_default_surname_hanja(req.get("query", ""))
 
-    parts = [f"{req.get('lastName', '')}씨 성"]
+    last = req.get("lastName", "")
+    default_hanja = _DEFAULT_SURNAME_HANJA.get(last)
+    parts = [f"{last}씨({default_hanja}) 성" if default_hanja else f"{last}씨 성"]
     if req.get("gender"):
         parts.append(f"{req['gender']} 아이")
     if req.get("elements"):
-        parts.append(f"{'/'.join(req['elements'])} 오행")
+        # "木오행"처럼 붙여 써야 파이프라인 오행 파서가 인식한다.
+        # 파서는 첫 매칭만 사용하므로 다중 선택 시 첫 항목이 우선 반영된다.
+        parts.append(" ".join(f"{el}오행" for el in req["elements"]))
     if req.get("strokeRange"):
         parts.append(f"획수 {req['strokeRange']}")
     if req.get("meaning"):
@@ -161,7 +209,65 @@ def _build_structured_query(req: dict) -> str:
     return " ".join(parts)
 
 
-async def _generate_structured(query: str) -> list[NameResult]:
+@functools.lru_cache(maxsize=1)
+def _hanja_meta_map() -> dict:
+    """인명용 한자 캐시를 한자→메타데이터 딕셔너리로 변환합니다 (결과 교차보정용)."""
+    return {
+        meta.get("hanja"): meta
+        for _, meta in rag_server._load_person_name_hanja()
+        if meta and meta.get("hanja")
+    }
+
+
+def _correct_results_from_db(results: list[NameResult], query: str) -> list[NameResult]:
+    """구조화 LLM이 채운 글자 정보(획수·오행·독음·뜻)를 DB 실제값으로 교정합니다.
+    마크다운 답변에 없는 성씨 획수/오행/뜻은 LLM이 지어낼 수밖에 없으므로 여기서 바로잡는다."""
+    meta_map = _hanja_meta_map()
+
+    surname_kr, surname_info = _resolve_surname(query)
+    if surname_kr and not surname_info:
+        # 동음이의 없는 성씨는 사전으로 자동 해결 (llm_router_node와 동일 규칙)
+        entries = [(k, v) for k, v in _SURNAME_OHAENG.items() if v.get("hangul") == surname_kr]
+        if len(entries) == 1:
+            k, v = entries[0]
+            surname_info = {"hanja": k, "resource_ohaeng": v.get("resource_ohaeng", "")}
+
+    s_hanja = (surname_info or {}).get("hanja", "")
+    s_strokes = rag_server.get_hanja_strokes(s_hanja) if s_hanja else 0
+    if s_hanja and not s_strokes:
+        s_strokes = int(_SURNAME_OHAENG.get(s_hanja, {}).get("strokes", 0) or 0)
+    s_element = (surname_info or {}).get("resource_ohaeng", "")
+    s_meaning = (meta_map.get(s_hanja) or {}).get("sound_meaning", "")
+
+    for r in results:
+        if s_hanja:
+            r.lastName.char = s_hanja
+            if surname_kr:
+                r.lastName.reading = surname_kr
+            if s_strokes:
+                r.lastName.strokes = s_strokes
+            if s_element:
+                r.lastName.element = s_element
+            if s_meaning:
+                r.lastName.meaning = s_meaning
+        for cb in r.ruby:
+            meta = meta_map.get(cb.char)
+            if not meta:
+                continue
+            if meta.get("hangul"):
+                cb.reading = meta["hangul"]
+            if meta.get("strokes"):
+                cb.strokes = int(meta["strokes"])
+            if meta.get("resource_ohaeng"):
+                cb.element = meta["resource_ohaeng"]
+            if meta.get("sound_meaning"):
+                cb.meaning = meta["sound_meaning"]
+        if r.ruby and all(cb.reading for cb in r.ruby):
+            r.hangul = "".join(cb.reading for cb in r.ruby)
+    return results
+
+
+async def _generate_structured(query: str, exclude_names: list[str] | None = None) -> list[NameResult]:
     state = {
         "query": query,
         "context": "",
@@ -172,19 +278,34 @@ async def _generate_structured(query: str) -> list[NameResult]:
         "collections": [],
         "name_length": 2,
         "surname_hanja": "",
+        "exclude_names": exclude_names or [],
+        "structured_results": [],
     }
     result = await _graph.ainvoke(state)
     answer = result.get("answer", "")
     context = result.get("context", "")
+
+    # constraint-first 경로가 구조화 결과를 직접 채운 경우 — 값이 전부 DB 실측이므로
+    # 2차 변환 LLM과 교차보정 없이 그대로 사용한다.
+    direct = result.get("structured_results") or []
+    if direct:
+        return [NameResult(**item) for item in direct]
+
     if not answer:
         raise ValueError("empty answer")
 
-    structuring_llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0.3).with_structured_output(NameResultList)
+    # 파이프라인이 이름 대신 반문(clarify)을 반환한 경우 — 구조화 LLM에 넘기면
+    # 빈 배열이나 지어낸 이름이 나오므로, 반문 내용을 그대로 클라이언트에 전달한다.
+    if "## [이름" not in answer:
+        raise NeedMoreInfoError(answer)
+
+    # (fallback 경로) 형식 변환 전용이므로 temperature 0
+    structuring_llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0).with_structured_output(NameResultList)
     structured: NameResultList = await structuring_llm.ainvoke([
         SystemMessage(content=_STRUCTURE_PROMPT),
         HumanMessage(content=f"사용자 요청: {query}\n\n완성된 추천 결과:\n{answer}\n\n참고 자료(출처 라벨용):\n{context}"),
     ])
-    return structured.results
+    return _correct_results_from_db(structured.results, query)
 
 
 @app.post("/names/generate")
@@ -193,10 +314,19 @@ async def generate_names(req: dict):
     if not query.strip():
         return JSONResponse(status_code=400, content={"message": "요청 내용이 비어 있습니다.", "detail": None})
 
+    # 재생성 시 이미 추천한 이름 제외 (프론트가 기존 결과의 hangul 목록을 넘김)
+    raw_exclude = req.get("excludeNames")
+    exclude_names = [str(n) for n in raw_exclude if n] if isinstance(raw_exclude, list) else []
+
     try:
-        results = await asyncio.wait_for(_generate_structured(query), timeout=90)
+        results = await asyncio.wait_for(_generate_structured(query, exclude_names), timeout=90)
     except asyncio.TimeoutError:
         return JSONResponse(status_code=504, content={"message": "작명 생성 시간이 초과되었습니다.", "detail": None})
+    except NeedMoreInfoError as exc:
+        return JSONResponse(
+            status_code=422,
+            content={"message": "이름을 생성하려면 추가 정보가 필요합니다.", "detail": exc.guidance},
+        )
     except Exception as exc:
         return JSONResponse(status_code=502, content={"message": "작명 생성에 실패했습니다.", "detail": str(exc)})
 
