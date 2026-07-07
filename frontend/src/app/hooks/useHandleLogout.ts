@@ -6,8 +6,8 @@ import { useAuth } from "@/app/providers/AuthProvider";
 export function useHandleLogout(): () => void {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  return useCallback(() => {
-    logout();
+  return useCallback(async () => {
+    await logout();
     navigate("/");
   }, [logout, navigate]);
 }

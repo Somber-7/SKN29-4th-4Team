@@ -48,8 +48,8 @@ export function PolicyScreen({
           title={isTerms ? "이용약관" : "개인정보처리방침"}
           description={
             isTerms
-              ? "명가작명소 서비스 이용에 적용되는 약관입니다. 시행일: 2026년 1월 1일"
-              : "명가작명소가 개인정보를 수집·이용·보호하는 기준입니다. 적용일: 2026년 1월 1일"
+              ? "명가작명소 서비스 이용에 적용되는 약관입니다. 시행일: 2026년 7월 7일"
+              : "명가작명소가 개인정보를 수집·이용·보호하는 기준입니다. 적용일: 2026년 7월 7일"
           }
           watermark={isTerms ? "約" : "私"}
           align="left"
@@ -118,13 +118,6 @@ export function PolicyScreen({
                 ))}
               </section>
             ))}
-
-            <div className="border-t border-border pt-6 mt-12">
-              <p className="text-xs text-hint break-keep">
-                본 문서는 서비스 시안 단계의 예시 문안으로, 실제 법률 자문을 거치지 않았습니다.
-                {/* TODO: API 연동 — 정식 오픈 시 법무 검토본으로 교체 */}
-              </p>
-            </div>
           </div>
         </div>
       </main>

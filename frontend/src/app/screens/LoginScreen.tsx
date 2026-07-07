@@ -1,24 +1,27 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { ApiError } from "@/api/client";
+import { authApi } from "@/api/auth";
 import type { AuthUser, Screen } from "@/app/types";
-import { isValidEmail } from "@/app/utils/validation";
 import { PrimaryButton } from "@/app/components/common/Button";
 import { Footer } from "@/app/components/layout/Footer";
 
-/** 데모용 테스트 계정 (시안 단계 — API 연동 전. 화면에는 더 이상 노출하지 않는다) */
-const TEST_USER = {
-  email: "user@myeongga.co.kr",
-  password: "user1234",
-  name: "김명가",
-};
-
-const ADMIN_EMAIL = "admin@myeongga.co.kr";
-
 /** 어떤 계정이 존재하는지 힌트를 주지 않는 공용 오류 문구 */
-const INVALID_CREDENTIALS = "이메일 또는 비밀번호를 확인해 주세요.";
+const INVALID_CREDENTIALS = "아이디 또는 비밀번호를 확인해 주세요.";
+const USERNAME_MESSAGE = "아이디는 영문, 숫자, 밑줄(_) 4~20자로 입력해 주세요.";
+const USERNAME_RE = /^[A-Za-z0-9_]{4,20}$/;
+const PASSWORD_MESSAGE = "영문, 숫자, 기호를 포함해 8~15자로 입력해 주세요.";
+const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^\w\s])\S{8,15}$/;
 
-type View = "login" | "forgot" | "forgot-sent";
+type View = "login" | "reset-verify" | "reset-password" | "reset-done";
+interface ResetErrors {
+  name?: string;
+  username?: string;
+  email?: string;
+  nextPassword?: string;
+  confirm?: string;
+}
 
 /** 제출 중 버튼에 표시하는 작은 회전 링 — ProcessingScreen의 mg-spin과 동일 모션 */
 function ButtonSpinner() {
@@ -31,6 +34,14 @@ function ButtonSpinner() {
       />
     </span>
   );
+}
+
+function getApiMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    const detail = error.detail as { message?: string } | undefined;
+    return detail?.message ?? error.message ?? fallback;
+  }
+  return fallback;
 }
 
 export function LoginScreen({
@@ -46,76 +57,134 @@ export function LoginScreen({
   const [view, setView] = useState<View>("login");
 
   // 로그인 폼
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 비밀번호 재설정 폼
+  const [resetName, setResetName] = useState("");
+  const [resetUsername, setResetUsername] = useState("");
   const [resetEmail, setResetEmail] = useState("");
-  const [resetError, setResetError] = useState("");
-  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetErrors, setResetErrors] = useState<ResetErrors>({});
+  const [isVerifyingReset, setIsVerifyingReset] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
-  const validateEmailField = (value: string) => {
-    if (!value.trim()) return "이메일을 입력해 주세요.";
-    if (!isValidEmail(value)) return "올바른 이메일 형식이 아닙니다.";
+  const validateUsernameField = (value: string) => {
+    if (!value.trim()) return "아이디를 입력해 주세요.";
+    if (!USERNAME_RE.test(value.trim())) return USERNAME_MESSAGE;
     return undefined;
   };
 
-  const handleSubmit = () => {
+  const validateEmailField = (value: string) => {
+    if (!value.trim()) return "이메일을 입력해 주세요.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "올바른 이메일 형식이 아닙니다.";
+    return undefined;
+  };
+
+  const validateResetPasswordField = (value: string) => {
+    if (!value) return "새 비밀번호를 입력해 주세요.";
+    if (!PASSWORD_RE.test(value)) return PASSWORD_MESSAGE;
+    return undefined;
+  };
+
+  const handleSubmit = async () => {
     if (isSubmitting) return;
-    const next: { email?: string; password?: string } = {};
-    const emailError = validateEmailField(email);
-    if (emailError) next.email = emailError;
+    const next: { username?: string; password?: string } = {};
+    const usernameError = validateUsernameField(username);
+    if (usernameError) next.username = usernameError;
     if (!password) next.password = "비밀번호를 입력해 주세요.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
     setIsSubmitting(true);
-    // TODO(API): POST /auth/login 으로 대체 — role은 서버 세션/JWT의 role 클레임 사용.
-    // 지금은 실제 네트워크 지연을 흉내낸 데모 타이머만 존재한다.
-    window.setTimeout(() => {
-      const normalized = email.trim().toLowerCase();
-
-      if (normalized === ADMIN_EMAIL) {
-        onLogin({ name: "관리자", email: ADMIN_EMAIL, role: "admin" });
-        toast.success("관리자님, 환영합니다.", { duration: 3500, id: "welcome" });
-        onNavigate("adminDashboard");
-        return;
-      }
-
-      if (normalized === TEST_USER.email && password === TEST_USER.password) {
-        onLogin({ name: TEST_USER.name, email: TEST_USER.email, role: "user" });
-        toast.success(`${TEST_USER.name}님, 환영합니다.`, { duration: 3500, id: "welcome" });
-        // "시작하기" 등에서 튕겨나왔다면 원래 가려던 화면(gate 등)으로, 로그인 메뉴로 바로 들어왔다면 랜딩으로
-        onNavigate(redirectTo);
-        return;
-      }
-
-      setErrors({ password: INVALID_CREDENTIALS });
+    try {
+      const user = await authApi.login({ username: username.trim(), password });
+      onLogin(user);
+      toast.success(`${user.name}님, 환영합니다.`, { duration: 3500, id: "welcome" });
+      onNavigate(user.role === "admin" ? "adminDashboard" : redirectTo);
+    } catch (error) {
+      setErrors({ password: getApiMessage(error, INVALID_CREDENTIALS) });
+    } finally {
       setIsSubmitting(false);
-    }, 550);
+    }
   };
 
   const openForgotPassword = () => {
-    setResetEmail(email);
-    setResetError("");
-    setView("forgot");
+    setResetUsername(username);
+    setResetPassword("");
+    setResetConfirm("");
+    setResetErrors({});
+    setView("reset-verify");
   };
 
-  const handleSendReset = () => {
-    if (isSendingReset) return;
+  const handleVerifyResetAccount = async () => {
+    if (isVerifyingReset) return;
+    const next: ResetErrors = {};
+    if (!resetName.trim()) next.name = "이름을 입력해 주세요.";
+    const usernameError = validateUsernameField(resetUsername);
+    if (usernameError) next.username = usernameError;
     const emailError = validateEmailField(resetEmail);
-    setResetError(emailError ?? "");
-    if (emailError) return;
+    if (emailError) next.email = emailError;
+    setResetErrors(next);
+    if (Object.keys(next).length > 0) return;
 
-    setIsSendingReset(true);
-    // TODO(API): POST /auth/forgot-password 로 대체 — 지금은 데모용 지연만 흉내낸다.
-    window.setTimeout(() => {
-      setIsSendingReset(false);
-      setView("forgot-sent");
-    }, 700);
+    setIsVerifyingReset(true);
+    try {
+      await authApi.verifyPasswordResetAccount({
+        name: resetName.trim(),
+        username: resetUsername.trim(),
+        email: resetEmail.trim(),
+      });
+      setResetPassword("");
+      setResetConfirm("");
+      setResetErrors({});
+      setView("reset-password");
+    } catch (error) {
+      setResetErrors((prev) => ({
+        ...prev,
+        email: getApiMessage(error, "가입 정보를 확인할 수 없습니다."),
+      }));
+    } finally {
+      setIsVerifyingReset(false);
+    }
+  };
+
+  const handleSendReset = async () => {
+    if (isResetting) return;
+    const next: ResetErrors = {};
+    const passwordError = validateResetPasswordField(resetPassword);
+    if (passwordError) next.nextPassword = passwordError;
+    if (!resetConfirm) next.confirm = "새 비밀번호를 한 번 더 입력해 주세요.";
+    else if (resetPassword && resetConfirm !== resetPassword) next.confirm = "비밀번호가 일치하지 않습니다.";
+    setResetErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setIsResetting(true);
+    try {
+      await authApi.resetPassword({
+        name: resetName.trim(),
+        username: resetUsername.trim(),
+        email: resetEmail.trim(),
+        nextPassword: resetPassword,
+      });
+      setPassword("");
+      setResetPassword("");
+      setResetConfirm("");
+      setView("reset-done");
+    } catch (error) {
+      setResetErrors((prev) => ({
+        ...prev,
+        confirm: getApiMessage(error, "비밀번호 재설정에 실패했습니다."),
+      }));
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const inputClass = (hasError: boolean) =>
@@ -151,30 +220,30 @@ export function LoginScreen({
               {/* Form */}
               <div className="relative z-10 bg-white border border-border p-7 space-y-5">
                 <div>
-                  <label htmlFor="login-email" className="block text-xs font-medium text-label mb-1.5">
-                    이메일
+                  <label htmlFor="login-username" className="block text-xs font-medium text-label mb-1.5">
+                    아이디
                   </label>
                   <input
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
+                    id="login-username"
+                    type="text"
+                    autoComplete="username"
+                    value={username}
                     disabled={isSubmitting}
                     onChange={(e) => {
-                      setEmail(e.target.value);
-                      setErrors((prev) => ({ ...prev, email: undefined }));
+                      setUsername(e.target.value);
+                      setErrors((prev) => ({ ...prev, username: undefined }));
                     }}
                     onBlur={() => {
-                      if (!email) return;
-                      const err = validateEmailField(email);
-                      if (err) setErrors((prev) => ({ ...prev, email: err }));
+                      if (!username) return;
+                      const err = validateUsernameField(username);
+                      if (err) setErrors((prev) => ({ ...prev, username: err }));
                     }}
-                    placeholder="name@example.com"
-                    aria-invalid={!!errors.email}
-                    className={inputClass(!!errors.email)}
+                    placeholder="myeongga01"
+                    aria-invalid={!!errors.username}
+                    className={inputClass(!!errors.username)}
                   />
-                  {errors.email && (
-                    <p role="alert" className="text-xs text-destructive mt-1">{errors.email}</p>
+                  {errors.username && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{errors.username}</p>
                   )}
                 </div>
 
@@ -237,23 +306,6 @@ export function LoginScreen({
                   {isSubmitting ? "로그인하는 중" : "로그인"}
                 </PrimaryButton>
 
-                {/* Divider */}
-                <div className="flex items-center gap-3" aria-hidden="true">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-[11px] text-hint">또는</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
-
-                {/* Kakao */}
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#FEE500] text-[#191919] text-sm font-medium hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M12 3C6.477 3 2 6.813 2 11.5c0 3.003 1.863 5.642 4.688 7.188l-.94 3.437a.25.25 0 0 0 .375.28L10.094 20A11.77 11.77 0 0 0 12 20.1c5.523 0 10-3.813 10-8.5C22 6.813 17.523 3 12 3Z" />
-                  </svg>
-                  카카오로 계속하기
-                </button>
               </div>
 
               {/* Sign-up link */}
@@ -269,17 +321,63 @@ export function LoginScreen({
             </>
           )}
 
-          {view === "forgot" && (
+          {view === "reset-verify" && (
             <>
               <div className="relative z-10 mb-8 text-center">
                 <p className="text-[10px] tracking-[0.32em] text-primary uppercase mb-3">Password Reset</p>
                 <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">비밀번호 재설정</h1>
                 <p className="text-sm text-muted-foreground break-keep">
-                  가입하신 이메일을 입력하시면 재설정 링크를 보내드립니다.
+                  가입 시 입력한 이름, 아이디, 이메일을 먼저 확인합니다.
                 </p>
               </div>
 
               <div className="relative z-10 bg-white border border-border p-7 space-y-5">
+                <div>
+                  <label htmlFor="reset-name" className="block text-xs font-medium text-label mb-1.5">
+                    이름
+                  </label>
+                  <input
+                    id="reset-name"
+                    type="text"
+                    autoComplete="name"
+                    value={resetName}
+                    disabled={isVerifyingReset}
+                    onChange={(e) => {
+                      setResetName(e.target.value);
+                      setResetErrors((prev) => ({ ...prev, name: undefined, confirm: undefined }));
+                    }}
+                    placeholder="홍길동"
+                    aria-invalid={!!resetErrors.name}
+                    className={inputClass(!!resetErrors.name)}
+                  />
+                  {resetErrors.name && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{resetErrors.name}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="reset-username" className="block text-xs font-medium text-label mb-1.5">
+                    아이디
+                  </label>
+                  <input
+                    id="reset-username"
+                    type="text"
+                    autoComplete="username"
+                    value={resetUsername}
+                    disabled={isVerifyingReset}
+                    onChange={(e) => {
+                      setResetUsername(e.target.value);
+                      setResetErrors((prev) => ({ ...prev, username: undefined, confirm: undefined }));
+                    }}
+                    placeholder="myeongga01"
+                    aria-invalid={!!resetErrors.username}
+                    className={inputClass(!!resetErrors.username)}
+                  />
+                  {resetErrors.username && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{resetErrors.username}</p>
+                  )}
+                </div>
+
                 <div>
                   <label htmlFor="reset-email" className="block text-xs font-medium text-label mb-1.5">
                     이메일
@@ -289,31 +387,31 @@ export function LoginScreen({
                     type="email"
                     autoComplete="email"
                     value={resetEmail}
-                    disabled={isSendingReset}
+                    disabled={isVerifyingReset}
                     onChange={(e) => {
                       setResetEmail(e.target.value);
-                      setResetError("");
+                      setResetErrors((prev) => ({ ...prev, email: undefined, confirm: undefined }));
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSendReset();
+                      if (e.key === "Enter") handleVerifyResetAccount();
                     }}
                     placeholder="name@example.com"
-                    aria-invalid={!!resetError}
-                    className={inputClass(!!resetError)}
+                    aria-invalid={!!resetErrors.email}
+                    className={inputClass(!!resetErrors.email)}
                   />
-                  {resetError && (
-                    <p role="alert" className="text-xs text-destructive mt-1">{resetError}</p>
+                  {resetErrors.email && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{resetErrors.email}</p>
                   )}
                 </div>
 
                 <PrimaryButton
-                  onClick={handleSendReset}
-                  disabled={isSendingReset}
-                  aria-busy={isSendingReset}
+                  onClick={handleVerifyResetAccount}
+                  disabled={isVerifyingReset}
+                  aria-busy={isVerifyingReset}
                   className="w-full px-4 py-3 inline-flex items-center justify-center gap-2"
                 >
-                  {isSendingReset && <ButtonSpinner />}
-                  {isSendingReset ? "보내는 중" : "재설정 링크 보내기"}
+                  {isVerifyingReset && <ButtonSpinner />}
+                  {isVerifyingReset ? "확인 중" : "가입 정보 확인"}
                 </PrimaryButton>
 
                 <button
@@ -327,21 +425,149 @@ export function LoginScreen({
             </>
           )}
 
-          {view === "forgot-sent" && (
+          {view === "reset-password" && (
             <>
               <div className="relative z-10 mb-8 text-center">
                 <p className="text-[10px] tracking-[0.32em] text-primary uppercase mb-3">Password Reset</p>
-                <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">메일을 보냈습니다</h1>
+                <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">새 비밀번호 설정</h1>
                 <p className="text-sm text-muted-foreground break-keep">
-                  <span className="text-foreground font-medium">{resetEmail}</span>로 재설정 안내를
-                  보내드렸습니다.
+                  가입 정보가 확인되었습니다. 새 비밀번호를 입력해 주세요.
+                </p>
+              </div>
+
+              <div className="relative z-10 bg-white border border-border p-7 space-y-5">
+                <div className="grid grid-cols-1 gap-3 text-xs text-caption border border-muted bg-muted/20 p-4">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-label">이름</span>
+                    <span className="text-foreground font-medium truncate">{resetName.trim()}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-label">아이디</span>
+                    <span className="text-foreground font-medium truncate">{resetUsername.trim()}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-label">이메일</span>
+                    <span className="text-foreground font-medium truncate">{resetEmail.trim()}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="reset-password" className="block text-xs font-medium text-label mb-1.5">
+                    새 비밀번호 <span className="font-normal text-caption">(영문+숫자+기호 8~15자)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="reset-password"
+                      type={showResetPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={resetPassword}
+                      disabled={isResetting}
+                      onChange={(e) => {
+                        setResetPassword(e.target.value);
+                        setResetErrors((prev) => ({ ...prev, nextPassword: undefined, confirm: undefined }));
+                      }}
+                      placeholder="••••••••"
+                      aria-invalid={!!resetErrors.nextPassword}
+                      className={`${inputClass(!!resetErrors.nextPassword)} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetPassword((v) => !v)}
+                      aria-label={showResetPassword ? "새 비밀번호 숨기기" : "새 비밀번호 표시"}
+                      className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-caption hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      {showResetPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                    </button>
+                  </div>
+                  {resetErrors.nextPassword && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{resetErrors.nextPassword}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="reset-confirm" className="block text-xs font-medium text-label mb-1.5">
+                    새 비밀번호 확인
+                    {resetConfirm && !resetErrors.confirm && (
+                      <span className={`ml-2 font-normal ${resetConfirm === resetPassword ? "text-pine" : "text-destructive"}`}>
+                        {resetConfirm === resetPassword ? "일치합니다" : "일치하지 않습니다"}
+                      </span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="reset-confirm"
+                      type={showResetConfirm ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={resetConfirm}
+                      disabled={isResetting}
+                      onChange={(e) => {
+                        setResetConfirm(e.target.value);
+                        setResetErrors((prev) => ({ ...prev, confirm: undefined }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSendReset();
+                      }}
+                      placeholder="••••••••"
+                      aria-invalid={!!resetErrors.confirm}
+                      className={`${inputClass(!!resetErrors.confirm)} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetConfirm((v) => !v)}
+                      aria-label={showResetConfirm ? "새 비밀번호 확인 숨기기" : "새 비밀번호 확인 표시"}
+                      className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-caption hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      {showResetConfirm ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                    </button>
+                  </div>
+                  {resetErrors.confirm && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{resetErrors.confirm}</p>
+                  )}
+                </div>
+
+                <PrimaryButton
+                  onClick={handleSendReset}
+                  disabled={isResetting}
+                  aria-busy={isResetting}
+                  className="w-full px-4 py-3 inline-flex items-center justify-center gap-2"
+                >
+                  {isResetting && <ButtonSpinner />}
+                  {isResetting ? "재설정 중" : "비밀번호 재설정"}
+                </PrimaryButton>
+
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setView("reset-verify")}
+                    className="w-full text-center text-xs text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    ← 가입 정보 다시 입력
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("login")}
+                    className="w-full text-center text-xs text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    로그인으로 돌아가기
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {view === "reset-done" && (
+            <>
+              <div className="relative z-10 mb-8 text-center">
+                <p className="text-[10px] tracking-[0.32em] text-primary uppercase mb-3">Password Reset</p>
+                <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">재설정 완료</h1>
+                <p className="text-sm text-muted-foreground break-keep">
+                  새 비밀번호로 다시 로그인해 주세요.
                 </p>
               </div>
 
               <div className="relative z-10 bg-white border border-border p-7 space-y-4">
                 <p className="text-xs text-hint leading-relaxed break-keep">
-                  시안 단계로, 실제 메일은 발송되지 않습니다. 실제 서비스에서는 이 메일의 링크로 새
-                  비밀번호를 설정하게 됩니다.
+                  가입 시 등록한 이름, 아이디, 이메일이 모두 일치하는 경우에만 비밀번호가 변경됩니다.
                 </p>
                 <PrimaryButton onClick={() => setView("login")} className="w-full px-4 py-3">
                   로그인으로 돌아가기

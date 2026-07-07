@@ -1,58 +1,83 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { ApiError, setUnauthorizedHandler } from "@/api/client";
+import { authApi } from "@/api/auth";
 import type { AuthUser } from "@/app/types";
-
-/** 데모 인증 세션 저장 키 */
-const AUTH_KEY = "mgUser";
-
-function loadUser(): AuthUser | null {
-  try {
-    const raw = sessionStorage.getItem(AUTH_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthUser;
-    // 호환: role이 없는 옛 세션은 일반 사용자로 보정
-    return { ...parsed, role: parsed.role ?? "user" };
-  } catch {
-    return null;
-  }
-}
 
 interface AuthContextValue {
   user: AuthUser | null;
+  isLoading: boolean;
   isLoggedIn: boolean;
   isAdmin: boolean;
   login: (u: AuthUser) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * sessionStorage("mgUser") 읽기/쓰기 · login/logout · role 판별을 전담한다.
- * App.tsx 등 소비자는 sessionStorage에 직접 접근하지 않고 useAuth()만 사용한다.
- * TODO(API): 서버 세션/JWT 기반 인증으로 대체 시 이 Provider 내부만 교체하면 된다.
+ * Django 세션을 인증의 기준으로 사용한다.
+ * 앱 시작 시 CSRF 쿠키를 받고, /api/me로 현재 세션 사용자를 복원한다.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => loadUser());
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function bootstrap() {
+      try {
+        await authApi.ensureCsrf();
+        const current = await authApi.currentUser();
+        if (alive) setUser(current);
+      } catch (error) {
+        if (alive) setUser(null);
+        if (error instanceof ApiError && error.status !== 401) {
+          toast.error("로그인 상태를 확인하지 못했습니다.");
+        }
+      } finally {
+        if (alive) setIsLoading(false);
+      }
+    }
+
+    bootstrap();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const login = useCallback((u: AuthUser) => {
     setUser(u);
-    sessionStorage.setItem(AUTH_KEY, JSON.stringify(u));
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    sessionStorage.removeItem(AUTH_KEY);
-    toast.success("로그아웃되었습니다.");
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // 세션이 이미 만료된 경우에도 화면 상태는 로그아웃으로 정리한다.
+    } finally {
+      setUser(null);
+      toast.success("로그아웃되었습니다.");
+    }
   }, []);
 
-  const value: AuthContextValue = {
-    user,
-    isLoggedIn: !!user,
-    isAdmin: user?.role === "admin",
-    login,
-    logout,
-  };
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isLoading,
+      isLoggedIn: !!user,
+      isAdmin: user?.role === "admin",
+      login,
+      logout,
+    }),
+    [isLoading, login, logout, user],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

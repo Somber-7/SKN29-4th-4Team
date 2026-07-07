@@ -1,11 +1,12 @@
 // ─── API 클라이언트 (fetch 래퍼) ───────────────────────────────────────────────
-// 백엔드는 아직 연결되지 않는다. 이 파일은 "연동 스위치만 켜면 되는" 골격만 제공한다.
-// - Django(세션 인증·마이페이지·인사이트·관리자)는 API_BASE("/api")
+// - Django(세션 인증·마이페이지·이력·관리자)는 API_BASE("/api")
 // - FastAPI+Neo4j(작명 생성·채팅)는 NAMING_API_BASE("/naming-api")
-// 개발 서버에서는 vite.config.ts의 server.proxy가 각각 8000/8001로 전달한다.
+// 로컬/배포 모두 nginx 또는 vite proxy가 각 백엔드로 전달한다.
 
 /** true(기본값)면 mock 어댑터, "false"면 실 API 어댑터를 사용한다 */
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
+/** 인증은 기본적으로 Django 세션 API를 사용한다. 필요하면 이 값만 true로 되돌린다. */
+export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const NAMING_API_BASE = import.meta.env.VITE_NAMING_API_BASE_URL ?? "/naming-api";
@@ -29,7 +30,7 @@ export class ApiError extends Error {
   }
 }
 
-/** 401 응답 수신 시 호출되는 콜백 자리 — AuthProvider가 로그인 리다이렉트 등을 등록한다 (TODO(API) 연동 시 사용) */
+/** 401 응답 수신 시 AuthProvider가 세션 상태를 비우기 위한 콜백 */
 let unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
