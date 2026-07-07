@@ -34,8 +34,10 @@ interface NamingFlowContextValue {
   openChat: (question: string | undefined) => void;
   /** chat → results 오버레이 복귀 */
   backToResults: () => void;
-  /** results "다시 추천" → input(실제 라우트)로 복귀 */
+  /** results "조건 수정" → input(실제 라우트)로 복귀 */
   retryFromResults: () => void;
+  /** results "다시 추천" → 같은 조건 + 기존 이름 제외(excludeNames)로 재생성 */
+  regenerateWithExclusions: (excludeNames: string[]) => void;
   /** history 목록에서 과거 요청 다시 열기 → results 오버레이 진입 */
   openHistoryResult: (request: NameRequest) => void;
 }
@@ -72,6 +74,16 @@ export function NamingFlowProvider({ children }: { children: ReactNode }) {
     navigate("/input");
   }, [navigate]);
 
+  const regenerateWithExclusions = useCallback((excludeNames: string[]) => {
+    setRequest((prev) => {
+      if (!prev) return prev;
+      // 여러 번 재생성해도 이전에 받은 이름이 전부 누적 제외되도록 병합
+      const merged = Array.from(new Set([...(prev.excludeNames ?? []), ...excludeNames]));
+      return { ...prev, excludeNames: merged };
+    });
+    setFlow("processing");
+  }, []);
+
   const openHistoryResult = useCallback((req: NameRequest) => {
     setRequest(req);
     setFlow("results");
@@ -87,6 +99,7 @@ export function NamingFlowProvider({ children }: { children: ReactNode }) {
     openChat,
     backToResults,
     retryFromResults,
+    regenerateWithExclusions,
     openHistoryResult,
   };
 
