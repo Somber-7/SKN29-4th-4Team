@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { USE_MOCK_NAMES } from "@/api/client";
 import { extractLastNameCharMock, isKnownLastNameMock } from "@/api/names";
 import { useNameResults } from "@/app/hooks/useNameResults";
 import { nameRequestToParsedQuery } from "@/app/utils/nameQueryParser";
@@ -166,8 +167,8 @@ export function ResultsScreen({
           )}
         </div>
 
-        {/* 시안 안내: 미지원 성씨는 예시(尹) 기준임을 명시 + 수리 표기 주의 */}
-        {!streaming && (
+        {/* 시안 안내: mock 모드에서만 — 미지원 성씨는 예시(尹) 기준임을 명시 + 수리 표기 주의 */}
+        {USE_MOCK_NAMES && !streaming && (
           <div className="flex flex-wrap items-center gap-2 mb-5">
             {lastNameChar && !isKnownLastNameMock(lastNameChar) && (
               <span className="text-xs text-gold-text bg-hanji border border-border-warm rounded px-2 py-0.5">

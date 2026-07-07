@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { NameRequest } from "@/app/types";
 import { formatNameRequest } from "@/app/utils/formatNameRequest";
 import { PrimaryButton, GhostButton } from "@/app/components/common/Button";
+import { useNameResults } from "@/app/hooks/useNameResults";
 
 /** 서비스 소개의 4단계 검증 프로세스와 동일한 순서로 진행 상황을 표현 */
 const PROCESSING_STEPS = [
@@ -24,10 +25,11 @@ const PROCESSING_STEPS = [
 ];
 
 /** 단계 사이 전환 간격 */
-// TODO(API): POST /names/generate 응답 대기로 대체 (타이머 제거)
 const STEP_INTERVAL_MS = 1400;
-/** 마지막 단계 이후 결과 화면으로 넘어가기까지의 지연 */
+/** 결과가 준비된 뒤 결과 화면으로 넘어가기까지의 지연 */
 const COMPLETE_DELAY_MS = 600;
+/** 마지막 단계 인덱스 — 실 응답이 도착할 때까지 여기서 대기한다 */
+const LAST_STEP = PROCESSING_STEPS.length - 1;
 
 export function ProcessingScreen({
   request,
@@ -42,17 +44,27 @@ export function ProcessingScreen({
   const [step, setStep] = useState(0);
   const [stopped, setStopped] = useState(false);
 
+  // ResultsScreen과 같은 queryKey로 실 요청을 미리 시작한다 (react-query가 fetch를 공유).
+  // 응답이 도착하면(성공/실패) 마지막 단계에서 결과 화면으로 넘어간다.
+  const { isSuccess, isError } = useNameResults(request as NameRequest, !!request);
+  const resultReady = request ? isSuccess || isError : true;
+
   useEffect(() => {
     if (stopped) return;
-    if (step >= PROCESSING_STEPS.length) {
+    // 애니메이션 단계는 마지막 직전까지만 타이머로 진행
+    if (step < LAST_STEP) {
+      const t = setTimeout(() => setStep((s) => s + 1), STEP_INTERVAL_MS);
+      return () => clearTimeout(t);
+    }
+    // 마지막 단계 도달 후 실 응답이 준비되면 결과로 전환 (mock은 즉시 준비됨)
+    if (step === LAST_STEP && resultReady) {
       const t = setTimeout(onComplete, COMPLETE_DELAY_MS);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setStep((s) => s + 1), STEP_INTERVAL_MS);
-    return () => clearTimeout(t);
-  }, [step, stopped, onComplete]);
+  }, [step, stopped, resultReady, onComplete]);
 
-  const progress = Math.min(step / PROCESSING_STEPS.length, 1);
+  // 진행률: 마지막 단계는 응답 대기 중이므로 응답 전까지 100%를 채우지 않는다
+  const progress = Math.min((step + (resultReady ? 1 : 0)) / PROCESSING_STEPS.length, 1);
 
   return (
     <div className="pt-16 min-h-screen bg-hanji/40 relative overflow-hidden flex items-center justify-center">
