@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
+import { ApiError } from "@/api/client";
+import { authApi } from "@/api/auth";
 import type { Screen } from "@/app/types";
 import { isValidEmail } from "@/app/utils/validation";
 import { PrimaryButton } from "@/app/components/common/Button";
@@ -7,17 +11,52 @@ import { PolicyAgreementModal } from "@/app/components/common/PolicyAgreementMod
 
 interface SignupErrors {
   name?: string;
+  username?: string;
   email?: string;
   password?: string;
   confirm?: string;
   agree?: string;
 }
 
+const TERMS_VERSION = "2026-07-07";
+const PRIVACY_VERSION = "2026-07-07";
+const USERNAME_MESSAGE = "아이디는 영문, 숫자, 밑줄(_) 4~20자로 입력해 주세요.";
+const USERNAME_RE = /^[A-Za-z0-9_]{4,20}$/;
+const PASSWORD_MESSAGE = "영문, 숫자, 기호를 포함해 8~15자로 입력해 주세요.";
+const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^\w\s])\S{8,15}$/;
+const DUPLICATE_USERNAME_MESSAGE = "중복된 아이디가 있습니다.";
+const DUPLICATE_EMAIL_MESSAGE = "중복된 이메일이 있습니다.";
+
+interface ApiErrorBody {
+  message?: string;
+  detail?: Record<string, string[]>;
+}
+
+function getApiFieldErrors(error: unknown) {
+  if (!(error instanceof ApiError)) return undefined;
+  const body = error.detail as ApiErrorBody | undefined;
+  return body?.detail;
+}
+
+function normalizeSignupError(field: "username" | "email", message?: string) {
+  if (!message) return undefined;
+  if (field === "username" && (message.includes("중복") || message.includes("사용 중"))) {
+    return DUPLICATE_USERNAME_MESSAGE;
+  }
+  if (field === "email" && (message.includes("중복") || message.includes("가입된"))) {
+    return DUPLICATE_EMAIL_MESSAGE;
+  }
+  return message;
+}
+
 export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   // 약관/방침을 끝까지 읽었는지 — 읽기 전에는 체크박스로 동의할 수 없다
@@ -25,6 +64,7 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
   const [privacyRead, setPrivacyRead] = useState(false);
   const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null);
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
   const clearError = (key: keyof SignupErrors) =>
@@ -36,9 +76,15 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
     return undefined;
   };
 
+  const validateUsernameField = (value: string) => {
+    if (!value.trim()) return "아이디를 입력해 주세요.";
+    if (!USERNAME_RE.test(value.trim())) return USERNAME_MESSAGE;
+    return undefined;
+  };
+
   const validatePasswordField = (value: string) => {
     if (!value) return "비밀번호를 입력해 주세요.";
-    if (value.length < 8) return "비밀번호는 8자 이상이어야 합니다.";
+    if (!PASSWORD_RE.test(value)) return PASSWORD_MESSAGE;
     return undefined;
   };
 
@@ -48,21 +94,77 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
     return undefined;
   };
 
-  const handleSubmit = () => {
-    // TODO(API): POST /auth/signup 으로 대체
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
     const next: SignupErrors = {};
-    if (!name.trim()) next.name = "이름을 입력해 주세요.";
+    const trimmedName = name.trim();
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedName) next.name = "이름을 입력해 주세요.";
+    const usernameError = validateUsernameField(trimmedUsername);
+    if (usernameError) next.username = usernameError;
     if (!email.trim()) next.email = "이메일을 입력해 주세요.";
     else if (!isValidEmail(email))
       next.email = "올바른 이메일 형식이 아닙니다.";
     if (!password) next.password = "비밀번호를 입력해 주세요.";
-    else if (password.length < 8) next.password = "비밀번호는 8자 이상이어야 합니다.";
+    else if (!PASSWORD_RE.test(password)) next.password = PASSWORD_MESSAGE;
     if (!confirm) next.confirm = "비밀번호를 한 번 더 입력해 주세요.";
     else if (password && confirm !== password) next.confirm = "비밀번호가 일치하지 않습니다.";
     if (!agreeTerms || !agreePrivacy) next.agree = "필수 약관에 모두 동의해 주세요.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
-    setDone(true);
+
+    setIsSubmitting(true);
+    try {
+      await authApi.signup({
+        name: trimmedName,
+        username: trimmedUsername,
+        email: trimmedEmail,
+        password,
+        termsAgreed: agreeTerms,
+        privacyAgreed: agreePrivacy,
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
+      });
+      setDone(true);
+      toast.success("회원가입이 완료되었습니다.");
+    } catch (error) {
+      const detail = getApiFieldErrors(error);
+      const usernameMessage = normalizeSignupError("username", detail?.username?.[0]);
+      const emailMessage = normalizeSignupError("email", detail?.email?.[0]);
+      const fieldErrors: SignupErrors = {
+        name: detail?.name?.[0],
+        username: usernameMessage,
+        email: emailMessage,
+        password: detail?.password?.[0],
+        agree: detail?.termsAgreed?.[0] ?? detail?.privacyAgreed?.[0],
+      };
+      setErrors({
+        name: fieldErrors.name,
+        username: fieldErrors.username,
+        email: fieldErrors.email,
+        password: fieldErrors.password,
+        agree: fieldErrors.agree,
+      });
+      const duplicateMessages = [usernameMessage, emailMessage].filter(
+        (message): message is string =>
+          message === DUPLICATE_USERNAME_MESSAGE || message === DUPLICATE_EMAIL_MESSAGE,
+      );
+      if (duplicateMessages.length > 0) {
+        duplicateMessages.forEach((message) => toast.error(message));
+      } else {
+        toast.error(
+          fieldErrors.name ??
+            fieldErrors.username ??
+            fieldErrors.email ??
+            fieldErrors.password ??
+            fieldErrors.agree ??
+            "회원가입 정보를 다시 확인해 주세요.",
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClass = (hasError: boolean) =>
@@ -150,6 +252,33 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                 </div>
 
                 <div>
+                  <label htmlFor="signup-username" className="block text-xs font-medium text-label mb-1.5">
+                    아이디
+                  </label>
+                  <input
+                    id="signup-username"
+                    type="text"
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      clearError("username");
+                    }}
+                    onBlur={() => {
+                      if (!username) return;
+                      const err = validateUsernameField(username);
+                      if (err) setErrors((prev) => ({ ...prev, username: err }));
+                    }}
+                    placeholder="myeongga01"
+                    aria-invalid={!!errors.username}
+                    className={inputClass(!!errors.username)}
+                  />
+                  {errors.username && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{errors.username}</p>
+                  )}
+                </div>
+
+                <div>
                   <label htmlFor="signup-email" className="block text-xs font-medium text-label mb-1.5">
                     이메일
                   </label>
@@ -178,26 +307,37 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
 
                 <div>
                   <label htmlFor="signup-password" className="block text-xs font-medium text-label mb-1.5">
-                    비밀번호 <span className="font-normal text-caption">(8자 이상)</span>
+                    비밀번호 <span className="font-normal text-caption">(영문+숫자+기호 8~15자)</span>
                   </label>
-                  <input
-                    id="signup-password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      clearError("password");
-                    }}
-                    onBlur={() => {
-                      if (!password) return;
-                      const err = validatePasswordField(password);
-                      if (err) setErrors((prev) => ({ ...prev, password: err }));
-                    }}
-                    placeholder="••••••••"
-                    aria-invalid={!!errors.password}
-                    className={inputClass(!!errors.password)}
-                  />
+                  <div className="relative">
+                    <input
+                      id="signup-password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        clearError("password");
+                        clearError("confirm");
+                      }}
+                      onBlur={() => {
+                        if (!password) return;
+                        const err = validatePasswordField(password);
+                        if (err) setErrors((prev) => ({ ...prev, password: err }));
+                      }}
+                      placeholder="••••••••"
+                      aria-invalid={!!errors.password}
+                      className={`${inputClass(!!errors.password)} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+                      className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-caption hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                    </button>
+                  </div>
                   {errors.password && (
                     <p role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>
                   )}
@@ -206,28 +346,43 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                 <div>
                   <label htmlFor="signup-confirm" className="block text-xs font-medium text-label mb-1.5">
                     비밀번호 확인
+                    {confirm && !errors.confirm && (
+                      <span className={`ml-2 font-normal ${confirm === password ? "text-pine" : "text-destructive"}`}>
+                        {confirm === password ? "일치합니다" : "일치하지 않습니다"}
+                      </span>
+                    )}
                   </label>
-                  <input
-                    id="signup-confirm"
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirm}
-                    onChange={(e) => {
-                      setConfirm(e.target.value);
-                      clearError("confirm");
-                    }}
-                    onBlur={() => {
-                      if (!confirm) return;
-                      const err = validateConfirmField(confirm);
-                      if (err) setErrors((prev) => ({ ...prev, confirm: err }));
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSubmit();
-                    }}
-                    placeholder="••••••••"
-                    aria-invalid={!!errors.confirm}
-                    className={inputClass(!!errors.confirm)}
-                  />
+                  <div className="relative">
+                    <input
+                      id="signup-confirm"
+                      type={showConfirm ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={confirm}
+                      onChange={(e) => {
+                        setConfirm(e.target.value);
+                        clearError("confirm");
+                      }}
+                      onBlur={() => {
+                        if (!confirm) return;
+                        const err = validateConfirmField(confirm);
+                        if (err) setErrors((prev) => ({ ...prev, confirm: err }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSubmit();
+                      }}
+                      placeholder="••••••••"
+                      aria-invalid={!!errors.confirm}
+                      className={`${inputClass(!!errors.confirm)} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm((v) => !v)}
+                      aria-label={showConfirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 표시"}
+                      className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-caption hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      {showConfirm ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                    </button>
+                  </div>
                   {errors.confirm && (
                     <p role="alert" className="text-xs text-destructive mt-1">{errors.confirm}</p>
                   )}
@@ -300,8 +455,13 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                   )}
                 </div>
 
-                <PrimaryButton onClick={handleSubmit} className="w-full px-4 py-3">
-                  가입하기
+                <PrimaryButton
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                  className="w-full px-4 py-3"
+                >
+                  {isSubmitting ? "가입 처리 중" : "가입하기"}
                 </PrimaryButton>
               </div>
 
@@ -316,9 +476,6 @@ export function SignupScreen({ onNavigate }: { onNavigate: (s: Screen) => void }
                 </button>
               </p>
 
-              <p className="relative z-10 text-center text-[11px] text-faint mt-4">
-                지금은 시안 단계로, 실제 가입은 연결되어 있지 않습니다.
-              </p>
             </>
           )}
         </div>
