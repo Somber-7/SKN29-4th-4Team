@@ -270,6 +270,12 @@ def contact_submit_view(request):
     return JsonResponse({}, status=201)
 
 
+@require_http_methods(["POST"])
+def heartbeat_view(request):
+    """프론트엔드에서 세션 유지를 위해 30초마다 보내는 ping을 받아주는 엔드포인트"""
+    return JsonResponse({"status": "ok"})
+
+
 @api_login_required
 @require_http_methods(["POST"])
 def change_password_view(request):

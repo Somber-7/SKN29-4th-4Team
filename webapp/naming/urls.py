@@ -19,4 +19,5 @@ urlpatterns = [
     path('support/notices', views.notice_list_view, name='notice_list'),
     path('support/notices/<int:notice_id>', views.notice_detail_view, name='notice_detail'),
     path('support/faqs', views.faq_list_view, name='faq_list'),
+    path('support/heartbeat', views.heartbeat_view, name='heartbeat'),
 ]
