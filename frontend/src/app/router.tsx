@@ -165,7 +165,7 @@ function NotFoundRoute() {
 // 다른 화면에서 다시 진입해도 같은 세션에서 이미 봤다면 다시 보여주지 않는다(sessionStorage).
 
 function RootLayout() {
-  const { flow, request, chatQuestion, completeProcessing, cancelProcessing, openChat, backToResults, retryFromResults } =
+  const { flow, request, chatQuestion, completeProcessing, cancelProcessing, openChat, backToResults, retryFromResults, regenerateWithExclusions } =
     useNamingFlow();
   const { isLoggedIn } = useAuth();
   const onNavigate = useScreenNav();
@@ -234,7 +234,12 @@ function RootLayout() {
             <ProcessingScreen request={request} onComplete={completeProcessing} onCancel={cancelProcessing} />
           )}
           {flow === "results" && (
-            <ResultsScreen request={request ?? EMPTY_NATURAL_REQUEST} onChat={openChat} onRetry={retryFromResults} />
+            <ResultsScreen
+              request={request ?? EMPTY_NATURAL_REQUEST}
+              onChat={openChat}
+              onRetry={retryFromResults}
+              onRegenerate={regenerateWithExclusions}
+            />
           )}
           {flow === "chat" && <ChatScreen initialQuestion={chatQuestion} onBack={backToResults} />}
           {!flow && <Outlet />}

@@ -3,10 +3,17 @@
 // - FastAPI+Neo4j(작명 생성·채팅)는 NAMING_API_BASE("/naming-api")
 // 로컬/배포 모두 nginx 또는 vite proxy가 각 백엔드로 전달한다.
 
-/** true(기본값)면 mock 어댑터, "false"면 실 API 어댑터를 사용한다 */
+/** true(기본값)면 mock 어댑터, "false"면 실 API 어댑터를 사용한다 (auth·admin·insights·support용) */
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
 /** 인증은 기본적으로 Django 세션 API를 사용한다. 필요하면 이 값만 true로 되돌린다. */
 export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
+
+/**
+ * 작명 생성(names) 전용 mock 스위치. 작명 백엔드(/naming-api)는 배포·검증이 끝났으므로
+ * 기본값을 "실 연동"으로 둔다 — 다른 도메인(전역 USE_MOCK=mock)과 독립적이다.
+ * UI만 오프라인으로 손볼 때는 VITE_USE_MOCK_NAMES=true 로 mock을 강제할 수 있다.
+ */
+export const USE_MOCK_NAMES = import.meta.env.VITE_USE_MOCK_NAMES === "true";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const NAMING_API_BASE = import.meta.env.VITE_NAMING_API_BASE_URL ?? "/naming-api";
@@ -116,9 +123,14 @@ function createClient(baseUrl: string) {
       } catch {
         detail = undefined;
       }
+      // 백엔드 에러 계약({ message, detail })의 message를 사용자 메시지로 우선 사용
+      const serverMessage = (detail as { message?: unknown } | undefined)?.message;
       throw new ApiError({
         status: res.status,
-        message: `API 요청 실패: ${res.status} ${res.statusText}`,
+        message:
+          typeof serverMessage === "string" && serverMessage
+            ? serverMessage
+            : `API 요청 실패: ${res.status} ${res.statusText}`,
         detail,
       });
     }

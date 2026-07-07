@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: deploy/nginx/Dockerfile
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -18,6 +19,7 @@ services:
   django:
     build:
       context: ./webapp
+    restart: unless-stopped
     env_file: .env
     volumes:
       - static_volume:/app/static
@@ -28,6 +30,7 @@ services:
     build:
       context: .
       dockerfile: deploy/Dockerfile.fastapi
+    restart: unless-stopped
     env_file: .env
     volumes:
       - ./data:/app/data
@@ -36,6 +39,7 @@ services:
 
   neo4j:
     image: neo4j:5
+    restart: unless-stopped
     environment:
       - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
       - NEO4J_server_memory_heap_max__size=1G

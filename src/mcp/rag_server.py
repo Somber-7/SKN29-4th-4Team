@@ -67,14 +67,16 @@ def _parse_hanja_conditions(query: str) -> tuple[dict | None, str]:
     conditions = []
     desc_parts = []
 
-    stroke_match = re.search(r'(\d+)\s*획', query)
+    # "김씨 8획"/"김씨(8획)"의 성씨 획수는 이름 글자 획수 조건이 아님 — 제거 후 파싱
+    stroke_query = re.sub(r'[가-힣]{1,2}씨\s*\(?\s*\d+\s*획\s*\)?', '', query)
+    stroke_match = re.search(r'(\d+)\s*획', stroke_query)
     if stroke_match:
         n = int(stroke_match.group(1))
         conditions.append({"strokes": n})
         desc_parts.append(f"획수 {n}획")
 
     _HANJA_TO_OHAENG = {"木": "목", "火": "화", "土": "토", "金": "금", "水": "수"}
-    ohaeng_match = re.search(r'([木火土金水목화토금수])오행', query)
+    ohaeng_match = re.search(r'(?<![가-힣一-鿿])([木火土金水목화토금수])\s*오행', query)
     if ohaeng_match:
         raw = ohaeng_match.group(1)
         o = _HANJA_TO_OHAENG.get(raw, raw)   # 한자면 한글로 변환, 이미 한글이면 그대로
@@ -231,7 +233,7 @@ def sample_hanja(query: str, n_results: int = 20) -> str:
     all_hanja = _load_person_name_hanja()
 
     ohaeng = None
-    ohaeng_match = re.search(r'([木火土金水목화토금수])오행', query)
+    ohaeng_match = re.search(r'(?<![가-힣一-鿿])([木火土金水목화토금수])\s*오행', query)
     if ohaeng_match:
         raw = ohaeng_match.group(1)
         ohaeng = _HANJA_TO_OHAENG_KR.get(raw, raw)

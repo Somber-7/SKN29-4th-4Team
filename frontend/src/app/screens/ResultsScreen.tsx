@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { USE_MOCK_NAMES } from "@/api/client";
 import { extractLastNameCharMock, isKnownLastNameMock } from "@/api/names";
 import { useNameResults } from "@/app/hooks/useNameResults";
 import { nameRequestToParsedQuery } from "@/app/utils/nameQueryParser";
@@ -34,10 +35,14 @@ export function ResultsScreen({
   request,
   onChat,
   onRetry,
+  onRegenerate,
 }: {
   request: NameRequest;
   onChat: (question?: string) => void;
+  /** "조건 수정" — 입력 화면으로 복귀 */
   onRetry: () => void;
+  /** "다시 추천" — 같은 조건 + 현재 결과 이름 제외(excludeNames)로 재생성 */
+  onRegenerate: (excludeNames: string[]) => void;
 }) {
   const [streaming, setStreaming] = useState(true);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -149,7 +154,10 @@ export function ResultsScreen({
           </div>
           {!streaming && (
             <div className="flex gap-2">
-              <GhostButton onClick={onRetry} className="px-4 py-2 text-xs text-label rounded-lg">
+              <GhostButton
+                onClick={() => onRegenerate(results.map((r) => r.hangul))}
+                className="px-4 py-2 text-xs text-label rounded-lg"
+              >
                 다시 추천
               </GhostButton>
               <PrimaryButton onClick={() => onChat()} className="px-4 py-2 text-xs">
@@ -159,8 +167,8 @@ export function ResultsScreen({
           )}
         </div>
 
-        {/* 시안 안내: 미지원 성씨는 예시(尹) 기준임을 명시 + 수리 표기 주의 */}
-        {!streaming && (
+        {/* 시안 안내: mock 모드에서만 — 미지원 성씨는 예시(尹) 기준임을 명시 + 수리 표기 주의 */}
+        {USE_MOCK_NAMES && !streaming && (
           <div className="flex flex-wrap items-center gap-2 mb-5">
             {lastNameChar && !isKnownLastNameMock(lastNameChar) && (
               <span className="text-xs text-gold-text bg-hanji border border-border-warm rounded px-2 py-0.5">

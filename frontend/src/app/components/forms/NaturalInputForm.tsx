@@ -4,9 +4,10 @@ import { ParsedChipRow } from "@/app/components/common/ParsedChips";
 import { PrimaryButton } from "@/app/components/common/Button";
 import type { NameRequest } from "@/app/types";
 
+// 칩은 제출 전 검증(성씨·성별 필수)을 통과하는 완성형 예시여야 한다
 const PROMPT_CHIPS = [
   "김씨 성, 水 기운 두 글자 남자 이름",
-  "이씨 성, 土·木 오행, 학문에 좋은 이름",
+  "이씨 성, 土·木 오행, 학문에 좋은 아들 이름",
   "박씨 성, 획수 합 20~25, 여자 이름",
 ];
 
@@ -33,6 +34,16 @@ export function NaturalInputForm({
   const handleSubmit = () => {
     if (!query.trim()) {
       setQueryError("어떤 이름을 원하시는지 설명해 주세요.");
+      return;
+    }
+    // 서버가 반문(clarify) 없이 바로 결과를 내도록 필수 조건을 제출 전에 확인한다.
+    // parsed는 입력 즉시 갱신되는 미리보기 칩과 동일한 파싱 결과다.
+    if (!parsed.lastName) {
+      setQueryError("성씨를 포함해 주세요. 예: 김씨 딸에게 어울리는 밝은 이름");
+      return;
+    }
+    if (!parsed.gender) {
+      setQueryError("성별(아들/딸)을 포함해 주세요. 예: 김씨 딸에게 어울리는 밝은 이름");
       return;
     }
     setQueryError("");
