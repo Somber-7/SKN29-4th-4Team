@@ -2,7 +2,7 @@
 // TODO(API): POST /naming-api/names/generate — 서버가 NameRequest(자연어/상세조건)를 받아
 // Neo4j 기반 추천 결과를 반환한다. 지금은 mock 어댑터가 기존 화면 동작을 그대로 재현한다.
 
-import { USE_MOCK, mockDelay, namingApiClient } from "./client";
+import { USE_MOCK_NAMES, mockDelay, namingApiClient } from "./client";
 import { parseNameQuery } from "@/app/utils/nameQueryParser";
 import type { NameRequest, NameResult } from "@/app/types";
 import { LAST_NAMES, NAME_RESULTS, SAMPLE_PREVIEW_RESULTS } from "./mock/names.mock";
@@ -41,7 +41,7 @@ const realAdapter: NamesApi = {
   getSamplePreview: () => namingApiClient.get<NameResult[]>("/names/sample-preview"),
 };
 
-export const namesApi: NamesApi = USE_MOCK ? mockAdapter : realAdapter;
+export const namesApi: NamesApi = USE_MOCK_NAMES ? mockAdapter : realAdapter;
 
 /** mock 모드에서 useSamplePreviewNames 훅의 initialData로 재사용 */
 export const MOCK_SAMPLE_PREVIEW_RESULTS = SAMPLE_PREVIEW_RESULTS;
