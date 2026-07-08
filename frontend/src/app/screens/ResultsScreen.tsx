@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { USE_MOCK_NAMES } from "@/api/client";
+import { authApi } from "@/api/auth";
 import { extractLastNameCharMock, isKnownLastNameMock } from "@/api/names";
 import { useNameResults } from "@/app/hooks/useNameResults";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { nameRequestToParsedQuery } from "@/app/utils/nameQueryParser";
 import { formatNameRequest } from "@/app/utils/formatNameRequest";
 import { ParsedChipRow } from "@/app/components/common/ParsedChips";
@@ -44,8 +46,8 @@ export function ResultsScreen({
 }) {
   const [streaming, setStreaming] = useState(true);
   const [visibleCount, setVisibleCount] = useState(0);
-  const [saved, setSaved] = useState<Set<number>>(new Set());
   const [selectedResult, setSelectedResult] = useState<NameResult | null>(null);
+  const { isLoggedIn } = useAuth();
 
   const parsed = useMemo(() => nameRequestToParsedQuery(request), [request]);
   const displayText = useMemo(() => formatNameRequest(request), [request]);
@@ -53,6 +55,20 @@ export function ResultsScreen({
 
   // TODO(API): 서버가 성씨 반영 결과를 주면 훅 내부의 치환 로직 제거 (POST /naming-api/names/generate)
   const { data: results = [] } = useNameResults(request);
+
+  // 로그인 사용자는 추천을 받는 즉시 작명 기록에 저장해, 마이페이지 > 작명 기록에서
+  // 다시 확인할 수 있게 한다. results는 react-query 캐시 참조라 같은 생성 결과에 대해
+  // 재렌더링돼도 동일 참조를 유지하므로, savedResultsRef로 참조가 바뀔 때(새 생성)만
+  // 저장을 1회 호출한다.
+  const savedResultsRef = useRef<NameResult[] | null>(null);
+  useEffect(() => {
+    if (!isLoggedIn || results.length === 0) return;
+    if (savedResultsRef.current === results) return;
+    savedResultsRef.current = results;
+    authApi.saveHistory({ query: displayText, request, results }).catch(() => {
+      // 기록 저장은 부가 기능이라 실패해도 결과 화면 자체는 그대로 정상 동작해야 한다.
+    });
+  }, [isLoggedIn, results, displayText, request]);
 
   useEffect(() => {
     const t = setTimeout(() => setStreaming(false), STREAMING_DURATION_MS);
@@ -72,14 +88,6 @@ export function ResultsScreen({
     }, CARD_REVEAL_INTERVAL_MS);
     return () => clearInterval(iv);
   }, [streaming, results.length]);
-
-  const toggleSave = (id: number) =>
-    setSaved((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div className="pt-16 min-h-screen bg-hanji/40 flex flex-col">
@@ -193,8 +201,6 @@ export function ResultsScreen({
               result={result}
               variant="detail"
               rank={i + 1}
-              saved={saved.has(result.id)}
-              onToggleSave={toggleSave}
               onOpenDetail={setSelectedResult}
             />
           ))}

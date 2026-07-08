@@ -7,12 +7,10 @@ const PAPER_NOISE_BG =
 
 interface NameCardProps {
   result: NameResult;
-  /** preview: 랜딩 샘플(한지 질감, 저장 버튼 없음) · detail: 결과 화면(가로 한 줄 레이아웃, 클릭 시 상세보기) */
+  /** preview: 랜딩 샘플(한지 질감) · detail: 결과 화면(가로 한 줄 레이아웃, 클릭 시 상세보기) */
   variant: "preview" | "detail";
   /** detail 변형: 추천 순번 (1부터) — 골드 넘버링으로 표시 */
   rank?: number;
-  saved?: boolean;
-  onToggleSave?: (id: number) => void;
   /** detail 변형에서 카드를 클릭/키보드로 선택했을 때 상세 정보를 열기 위한 콜백 */
   onOpenDetail?: (result: NameResult) => void;
 }
@@ -24,7 +22,7 @@ function isKoreanNameResult(result: NameResult): boolean {
   return !/[一-鿿]/.test(result.hanja);
 }
 
-export function NameCard({ result, variant, rank, saved = false, onToggleSave, onOpenDetail }: NameCardProps) {
+export function NameCard({ result, variant, rank, onOpenDetail }: NameCardProps) {
   const isDetail = variant === "detail";
   const isKoreanResult = isKoreanNameResult(result);
   const fullHanja = result.lastName.char + result.ruby.map((c) => c.char).join("");
@@ -107,7 +105,7 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
           ? `${isKoreanResult ? fullHangul : `${fullHanja} ${fullHangul}`} 상세 정보 보기`
           : undefined
       }
-      className={`bg-white border border-border-warm rounded-2xl p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,17rem)] gap-x-4 gap-y-3 lg:items-start transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-border/50 hover:shadow-[0_16px_36px_rgba(46,30,8,0.08)] ${
+      className={`relative bg-white border border-border-warm rounded-2xl p-5 sm:p-6 ${onOpenDetail ? "pr-10 sm:pr-12" : ""} grid grid-cols-1 lg:grid-cols-[12rem_minmax(0,1fr)] gap-x-4 gap-y-3 lg:items-start transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-border/50 hover:shadow-[0_16px_36px_rgba(46,30,8,0.08)] ${
         onOpenDetail ? "cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary" : ""
       }`}
       style={{ animation: "mg-fadein 0.35s ease forwards" }}
@@ -164,36 +162,23 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
         )}
       </div>
 
-      {/* 저장·상세보기 — Grid 3열(최대 17rem). 81수리/이름 풀이 요약은 카드 목록에서는
-          빼고(상세보기 모달에서만 제공) 저장 버튼과 화살표만 남겨, 카드 세로 중앙에
-          정렬한다(lg:self-center — 상위 grid의 lg:items-start를 이 컬럼만 덮어씀). */}
-      <div className="flex items-center justify-end gap-2 flex-wrap lg:self-center">
-        {onToggleSave && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSave(result.id);
-            }}
-            aria-label={saved ? "저장됨" : "저장"}
-            aria-pressed={saved}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-primary flex-shrink-0 ${
-              saved
-                ? "bg-primary border-primary text-white"
-                : "border-border-warm text-faint hover:border-primary hover:text-primary"
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4">
-              <path d="M2 2h8v9l-4-2.5L2 11V2z" />
-            </svg>
-          </button>
-        )}
-
-        {onOpenDetail && (
-          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-faint flex-shrink-0" aria-hidden="true">
-            <path d="M1 1l5 5-5 5" />
-          </svg>
-        )}
-      </div>
+      {/* 상세보기 화살표 — 저장 버튼을 없애면서 전용 Grid 3열도 함께 없애 그 폭을 2열(한자
+          풀이 칩)에 돌려줬다. 화살표는 grid 흐름 밖에서 카드 오른쪽 끝에 세로 중앙 고정
+          배치한다(article에 준 relative + pr-10/12로 텍스트와 안 겹치게 여백 확보). */}
+      {onOpenDetail && (
+        <svg
+          width="7"
+          height="12"
+          viewBox="0 0 7 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 text-faint"
+          aria-hidden="true"
+        >
+          <path d="M1 1l5 5-5 5" />
+        </svg>
+      )}
     </article>
   );
 }
