@@ -23,10 +23,17 @@ export interface ContactInput {
   message: string;
 }
 
+export interface Heartbeat {
+  status: string;
+  maintenance: boolean;
+  reason: string;
+}
+
 export interface SupportApi {
   getFaq(): Promise<FaqBundle>;
   getNotices(): Promise<NoticeBundle>;
   submitContact(input: ContactInput): Promise<void>;
+  getHeartbeat(): Promise<Heartbeat>;
 }
 
 const MOCK_FAQ: FaqBundle = {
@@ -40,12 +47,14 @@ const mockAdapter: SupportApi = {
   async submitContact() {
     await mockDelay(undefined, 900);
   },
+  getHeartbeat: () => mockDelay({ status: "ok", maintenance: false, reason: "" }, 100),
 };
 
 const realAdapter: SupportApi = {
   getFaq: () => apiClient.get<FaqBundle>("/support/faqs"),
   getNotices: () => apiClient.get<NoticeBundle>("/support/notices"),
   submitContact: (input) => apiClient.post<void>("/support/contact", input),
+  getHeartbeat: () => apiClient.get<Heartbeat>("/support/heartbeat"),
 };
 
 export const supportApi: SupportApi = USE_MOCK ? mockAdapter : realAdapter;

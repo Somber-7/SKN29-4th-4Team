@@ -11,6 +11,8 @@ import { hasSeenGateThisSession, markGateSeenThisSession } from "@/app/utils/gat
 import { GNB } from "@/app/components/layout/GNB";
 import { Toaster } from "@/app/components/ui/sonner";
 import { apiClient, USE_MOCK } from "@/api/client";
+import { useQuery } from "@tanstack/react-query";
+import { supportApi } from "@/api/support";
 
 // ─── 화면 지연 로딩 (React.lazy) ───────────────────────────────────────────────
 // 화면 컴포넌트는 전부 named export이므로 default export로 어댑팅한다.
@@ -65,6 +67,9 @@ const MyPageScreen = lazy(() =>
 );
 const HistoryScreen = lazy(() =>
   import("@/app/screens/HistoryScreen").then((m) => ({ default: m.HistoryScreen })),
+);
+const MaintenanceScreen = lazy(() =>
+  import("@/app/screens/MaintenanceScreen").then((m) => ({ default: m.MaintenanceScreen })),
 );
 
 /** results 화면에 request가 아직 없을 때(예: 직접 진입 등 비정상 경로) 쓰는 기본값 — 기존 App.tsx와 동일 */
@@ -258,6 +263,24 @@ function RootLayout() {
 // (구 '/#/...' 링크 하위호환은 index.html의 리다이렉트 스크립트가 처리한다.)
 
 export function AppRoutes() {
+  const { data: heartbeat, isLoading: isHeartbeatLoading } = useQuery({
+    queryKey: ["system", "heartbeat"],
+    queryFn: () => supportApi.getHeartbeat(),
+    refetchInterval: 60000,
+  });
+
+  if (isHeartbeatLoading) {
+    return <RouteFallback />;
+  }
+
+  if (heartbeat?.maintenance) {
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <MaintenanceScreen reason={heartbeat.reason} />
+      </Suspense>
+    );
+  }
+
   return (
     <Routes>
       <Route element={<RootLayout />}>

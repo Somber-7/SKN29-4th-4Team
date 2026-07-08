@@ -103,7 +103,8 @@ const mockAdapter: AuthApi = {
     return mockDelay(HISTORY_ENTRIES, 0);
   },
   async getInquiries() {
-    return mockDelay([], 0);
+    const { INQUIRIES_ENTRIES } = await import("./mock/inquiries.mock");
+    return mockDelay(INQUIRIES_ENTRIES, 0);
   },
   async updateProfile(patch) {
     await mockDelay(undefined, 600);

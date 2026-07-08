@@ -397,5 +397,100 @@ def faq_list_view(request):
     })
 
 
+from .models import NameTrendStat, TrendArticle
+from django.db.models import Sum
+
+@require_http_methods(["GET"])
+def heartbeat_view(request):
+    from .models import Setting
+    setting = Setting.objects.filter(key="maintenance").first()
+    maintenance = False
+    reason = ""
+    if setting:
+        maintenance = setting.value.get("enabled", False)
+        reason = setting.value.get("reason", "")
+    return JsonResponse({
+        "status": "ok",
+        "maintenance": maintenance,
+        "reason": reason
+    })
+
+@require_http_methods(["GET"])
+def insights_view(request):
+    # Fetch latest 5 years of NameTrendStat
+    years_qs = NameTrendStat.objects.values_list('year', flat=True).distinct().order_by('-year')[:5]
+    years = list(years_qs)
+    
+    # We will fetch data for all these 5 years to send to frontend
+    # But since the current frontend InsightsBundle expects trendNamesBoy/Girl
+    # We will group by year and send the structure
+    # Actually, the mock had only one array for Boy and one for Girl.
+    # To support 5 years, we might need to send a dictionary grouped by year,
+    # or just send the latest year if the frontend hasn't been updated yet.
+    # We'll send a grouped structure and we'll update the frontend to use it.
+    
+    all_trends = NameTrendStat.objects.filter(year__in=years).order_by('-year', 'rank')
+    
+    trend_data = {}
+    for t in all_trends:
+        if t.year not in trend_data:
+            trend_data[t.year] = []
+        trend_data[t.year].append({
+            "rank": t.rank,
+            "name": t.name,
+            "hanja": t.hanja,
+            "count": t.count,
+            "delta": t.delta
+        })
+        
+    # Yearly counts for totalTrendCombined (exclude 2026 as it's partial data causing a sharp drop)
+    yearly_counts = NameTrendStat.objects.exclude(year=2026).values('year').annotate(total_count=Sum('count')).order_by('year')
+    total_trend_combined = [{"year": str(y["year"]), "count": y["total_count"]} for y in yearly_counts]
+    
+    # Articles
+    articles_qs = TrendArticle.objects.all().order_by('-date')
+    articles = []
+    for a in articles_qs:
+        articles.append({
+            "id": a.id,
+            "category": a.category,
+            "title": a.title,
+            "summary": a.summary,
+            "paragraphs": a.paragraphs,
+            "views": a.views,
+            "date": a.date,
+            "thumbnailUrl": a.thumbnail_url,
+            "url": a.url,
+            "createdAt": a.created_at.isoformat()
+        })
+        
+    insight_cards = [
+        {"title": "순우리말 이름", "desc": "부드럽고 친근한 어감으로 꾸준히 사랑받는 순우리말 이름", "stat": "선호도 1위", "hanja": "한"},
+        {"title": "중성적 어감", "desc": "성별에 구애받지 않는 세련된 느낌의 중성적 이름", "stat": "최근 급상승", "hanja": "류"},
+        {"title": "대법원 인명용", "desc": "사주와 조화를 이루며 뜻이 깊은 인명용 한자 이름", "stat": "스테디셀러", "hanja": "명"}
+    ]
+    
+    category_labels = {
+        "trend": "작명 트렌드",
+        "hanja": "한자 추천",
+        "guide": "작명 가이드"
+    }
+    
+    return JsonResponse({
+        "trendsByYear": trend_data,
+        "availableYears": years,
+        "totalTrendCombined": total_trend_combined,
+        "trendMeta": {
+            "sample": "2016-2026",
+            "period": "전체 데이터",
+            "updatedAt": "2026.07"
+        },
+        "insightCards": insight_cards,
+        "categoryLabels": category_labels,
+        "articles": articles
+    })
+
+
+
 
 

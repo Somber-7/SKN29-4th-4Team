@@ -72,7 +72,7 @@ export function GNB({
       <nav className="ml-auto flex items-center gap-4 sm:gap-6">
         {items.map((item) =>
           item.submenu ? (
-            <div key={item.label} className={`relative group ${item.className ?? ""}`}>
+            <div key={item.label} className={`relative group flex items-center ${item.className ?? ""}`}>
               <button
                 onClick={() => navigate("/mypage")}
                 className={`text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${

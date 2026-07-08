@@ -255,8 +255,17 @@ function ArticleModal({
 
 export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   const { data: insights } = useInsights();
-  const trendNamesBoy = insights?.trendNamesBoy ?? [];
-  const trendNamesGirl = insights?.trendNamesGirl ?? [];
+  
+  const availableYears = insights?.availableYears ?? [2026];
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  
+  useEffect(() => {
+    if (insights?.availableYears && insights.availableYears.length > 0 && !insights.availableYears.includes(selectedYear)) {
+      setSelectedYear(insights.availableYears[0]);
+    }
+  }, [insights?.availableYears, selectedYear]);
+  
+  const trendNames = insights?.trendsByYear?.[selectedYear] ?? [];
   const totalTrendCombined = insights?.totalTrendCombined ?? [];
   const trendMeta = insights?.trendMeta;
   const insightCards = insights?.insightCards ?? [];
@@ -270,14 +279,11 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
     { value: "guide", label: categoryLabels.guide ?? "" },
   ];
 
-  const [gender, setGender] = useState<Gender>("boy");
-  const genderTabRefs = useRef<Record<Gender, HTMLButtonElement | null>>({ boy: null, girl: null });
   const [filter, setFilter] = useState<ArticleFilter>("all");
   const [keyword, setKeyword] = useState("");
   const [debounced, setDebounced] = useState("");
   const [sort, setSort] = useState<SortOrder>("latest");
   const [openArticle, setOpenArticle] = useState<InsightArticle | null>(null);
-  const trendNames = gender === "boy" ? trendNamesBoy : trendNamesGirl;
 
   // 검색 디바운스 — 타이핑이 멈춘 뒤 250ms 후 반영
   useEffect(() => {
@@ -320,46 +326,32 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
             <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-semibold text-foreground">
-                  인기 이름 트렌드
+                  인기 추천 이름 선호도
                 </h2>
                 <p className="text-xs text-caption mt-1">
-                  최근 5년 순위 변동과 2026 상반기 TOP 8 · 데이터는 시안 단계의 예시입니다
+                  최근 5년 순위 변동과 상반기 TOP 8 · 데이터는 대법원 및 통계청 기반 예시입니다
                 </p>
               </div>
-              {/* 남아/여아 탭 */}
+              {/* 연도 탭 */}
               <div
                 className="flex p-1 bg-hanji border border-border rounded-xl"
                 role="tablist"
-                aria-label="성별 선택"
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    const next: Gender = gender === "boy" ? "girl" : "boy";
-                    setGender(next);
-                    genderTabRefs.current[next]?.focus();
-                  }
-                }}
+                aria-label="연도 선택"
               >
-                {(
-                  [
-                    { value: "boy", label: "남아" },
-                    { value: "girl", label: "여아" },
-                  ] as { value: Gender; label: string }[]
-                ).map((g) => (
+                {availableYears.map((y) => (
                   <button
-                    key={g.value}
-                    ref={(el) => { genderTabRefs.current[g.value] = el; }}
+                    key={y}
                     role="tab"
-                    aria-selected={gender === g.value}
-                    tabIndex={gender === g.value ? 0 : -1}
-                    onClick={() => setGender(g.value)}
+                    aria-selected={selectedYear === y}
+                    tabIndex={selectedYear === y ? 0 : -1}
+                    onClick={() => setSelectedYear(y)}
                     className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer ${
-                      gender === g.value
+                      selectedYear === y
                         ? "bg-white text-primary border border-border-warm shadow-[0_2px_8px_rgba(46,30,8,0.03)]"
                         : "text-caption hover:text-foreground"
                     }`}
                   >
-                    {g.label}
+                    {y}년
                   </button>
                 ))}
               </div>
@@ -378,15 +370,15 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
               </span>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-stretch">
               {/* 연도별 순위/등록건수 추이 */}
-              <div>
+              <div className="flex flex-col">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                   <h3 className="text-xs font-bold text-primary tracking-wide uppercase">
-                    연도별 전체 출생신고 건수 추이 (남녀 합산)
+                    연도별 이름 등록 건수 추이
                   </h3>
                 </div>
-                <div className="h-64">
+                <div className="flex-1 min-h-[16rem]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={totalTrendCombined} margin={{ top: 10, right: 14, left: 0, bottom: 0 }}>
                       <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
@@ -398,16 +390,15 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
                         padding={{ left: 16, right: 16 }}
                       />
                       <YAxis
-                        domain={[24000, 28000]}
-                        ticks={[24000, 25000, 26000, 27000, 28000]}
-                        tickFormatter={(v: number) => `${v.toLocaleString()}건`}
+                        domain={[200000, 450000]}
+                        tickFormatter={(v: number) => `${(v / 10000).toLocaleString()}만`}
                         tick={{ fontSize: 11, fill: AXIS_LABEL }}
                         axisLine={false}
                         tickLine={false}
-                        width={76}
+                        width={50}
                       />
                       <Tooltip
-                        formatter={(value) => [`${Number(value ?? 0).toLocaleString()}건`, "전체 출생신고"]}
+                        formatter={(value) => [`${Number(value ?? 0).toLocaleString()}건`, "이름 등록 건수"]}
                         labelFormatter={(label) => `${label}년`}
                         contentStyle={{
                           fontSize: 12,
@@ -427,18 +418,18 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="text-[11px] text-hint mt-2 break-keep">
-                  전체 출생신고 건수(남녀 합산)는 2022년 27,200건에서 2026년 24,800건으로 해마다 지속적인 감소세를 나타내고 있습니다.
+                <p className="text-[11px] text-hint mt-3 break-keep">
+                  해당 연도에 등록된 전체 이름 건수의 변동 추이를 나타냅니다.
                 </p>
               </div>
 
-              {/* 2026 상반기 TOP 8 — 인라인 바 리스트 */}
+              {/* 상반기 TOP 8 — 인라인 바 리스트 */}
               <div>
                 <h3 className="text-xs font-bold text-primary tracking-wide uppercase mb-3">
-                  2026 상반기 TOP 8
+                  {selectedYear}년 상반기 TOP 8
                 </h3>
                 <ol className="space-y-1">
-                  {trendNames.map((n) => {
+                  {trendNames.slice(0, 8).map((n) => {
                     const ratio = (n.count / trendNames[0].count) * 100;
                     const isTop = n.rank === 1;
                     return (
@@ -680,10 +671,10 @@ export function InsightsScreen({ onNavigate }: { onNavigate: (s: Screen) => void
           <div className="bg-secondary border border-border-warm rounded-2xl px-6 sm:px-8 py-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
             <div className="flex-1">
               <h2 className="text-base font-semibold text-foreground mb-1 break-keep">
-                트렌드를 확인하셨다면, 이제 우리 아이 이름 차례입니다
+                트렌드를 확인하셨다면, 이제 이름을 추천받아보세요.
               </h2>
               <p className="text-sm text-ink break-keep">
-                지금 바로 우리 아이에게 어울리는, 근거 있는 이름을 추천받아 보세요.
+                지금 바로 나에게 어울리는, 근거 있는 이름을 추천받아 보세요.
               </p>
             </div>
             <PrimaryButton

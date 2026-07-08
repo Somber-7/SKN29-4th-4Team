@@ -219,3 +219,38 @@ class DailyMetric(models.Model):
     def __str__(self):
         return str(self.date)
 
+
+# ── 이름 추천 트렌드 (통계청/대법원 기준) ──
+class NameTrendStat(models.Model):
+    year = models.IntegerField()
+    gender = models.CharField(max_length=10) # "boy" or "girl" or "all"
+    rank = models.IntegerField()
+    name = models.CharField(max_length=50)
+    hanja = models.CharField(max_length=50, blank=True)
+    count = models.IntegerField(default=0)
+    delta = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["-year", "gender", "rank"]
+        indexes = [models.Index(fields=["year", "gender"])]
+
+    def __str__(self):
+        return f"{self.year} {self.gender} {self.rank}위 {self.name}"
+
+
+# ── 추천 이름 지식 아티클 ──
+class TrendArticle(TimeStamped):
+    category = models.CharField(max_length=50) # "trend", "hanja", "guide"
+    title = models.CharField(max_length=200)
+    summary = models.CharField(max_length=500, blank=True)
+    paragraphs = models.JSONField(default=list)
+    views = models.IntegerField(default=0)
+    date = models.CharField(max_length=20) # e.g. "2026.07.03"
+    thumbnail_url = models.URLField(blank=True)
+    url = models.URLField(blank=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return self.title

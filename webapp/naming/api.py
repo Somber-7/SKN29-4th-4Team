@@ -931,7 +931,11 @@ def get_active_users(request):
     # 3분(180초) 이내 활동 기록이 있는 유저만 필터링
     active_users = {uid: ts for uid, ts in active_users.items() if now - ts < 180}
     
-    return {"count": len(active_users), "loggedInCount": len(active_users)}
+    if not active_users:
+        return {"count": 0, "loggedInCount": 0}
+        
+    normal_users_count = User.objects.filter(id__in=active_users.keys(), is_staff=False).count()
+    return {"count": normal_users_count, "loggedInCount": normal_users_count}
 
 admin_api.add_router("/api-usage", api_usage_router)
 
@@ -939,6 +943,37 @@ admin_api.add_router("/api-usage", api_usage_router)
 
 
 # ── 사이트 문구 설정 라우터 (§10, Phase 5) ──
+from .schemas import MaintenanceModeIn
+
+settings_router = Router()
+
+@settings_router.get("/maintenance", auth=require_role(AdminProfile.Role.ADMIN))
+def get_maintenance(request):
+    setting, _ = Setting.objects.get_or_create(key="maintenance", defaults={"value": {"enabled": False, "reason": ""}})
+    return {
+        "maintenance": setting.value.get("enabled", False),
+        "reason": setting.value.get("reason", "")
+    }
+
+@settings_router.patch("/maintenance", auth=require_role(AdminProfile.Role.ADMIN))
+def update_maintenance(request, payload: MaintenanceModeIn):
+    setting, _ = Setting.objects.get_or_create(key="maintenance", defaults={"value": {"enabled": False, "reason": ""}})
+    
+    val = setting.value
+    val["enabled"] = payload.maintenance
+    if payload.reason is not None:
+        val["reason"] = payload.reason
+        
+    setting.value = val
+    setting.updated_by = request.auth
+    setting.save()
+    _log_audit(request, AdminAuditLog.Action.OTHER, target_type="Setting", target_id="maintenance", detail={"action": "update", "enabled": payload.maintenance, "reason": val.get("reason", "")})
+    return {
+        "maintenance": setting.value.get("enabled", False),
+        "reason": setting.value.get("reason", "")
+    }
+
+admin_api.add_router("/settings", settings_router)
 
 import datetime
 from django.db.models import Sum, Count, Q

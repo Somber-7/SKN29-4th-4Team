@@ -21,4 +21,5 @@ urlpatterns = [
     path('support/notices/<int:notice_id>', views.notice_detail_view, name='notice_detail'),
     path('support/faqs', views.faq_list_view, name='faq_list'),
     path('support/heartbeat', views.heartbeat_view, name='heartbeat'),
+    path('insights', views.insights_view, name='insights'),
 ]

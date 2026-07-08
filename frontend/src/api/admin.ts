@@ -281,6 +281,9 @@ export interface AdminApi {
   listSiteTexts(): Promise<SiteTextSetting[]>;
   updateSiteText(key: string, input: SiteTextSettingUpdateInput): Promise<SiteTextSetting>;
   
+  getMaintenanceSetting(): Promise<{ maintenance: boolean; reason: string }>;
+  updateMaintenanceSetting(input: { maintenance: boolean; reason: string }): Promise<{ maintenance: boolean; reason: string }>;
+  
   // Phase 6
   listInquiryTemplates(): Promise<AdminInquiryTemplate[]>;
   createInquiryTemplate(input: { category?: string; title: string; body: string; isActive?: boolean }): Promise<AdminInquiryTemplate>;
@@ -828,6 +831,9 @@ const mockAdapter: AdminApi = {
     mockSiteTexts = mockSiteTexts.map(s => s.key === key ? { ...s, value: input.value, updatedAt: new Date().toISOString() } : s);
     return mockDelay(mockSiteTexts.find((s) => s.key === key)!, 300);
   },
+  
+  getMaintenanceSetting: () => mockDelay({ maintenance: false, reason: "" }, 200),
+  updateMaintenanceSetting: (input) => mockDelay(input, 300),
 
   // Phase 6
   listInquiryTemplates: () => mockDelay([...mockInquiryTemplates], 200),
@@ -952,6 +958,9 @@ const realAdapter: AdminApi = {
   // Phase 5
   listSiteTexts: () => apiClient.get<SiteTextSetting[]>("/admin/site-texts/"),
   updateSiteText: (key, input) => apiClient.patch<SiteTextSetting>(`/admin/site-texts/${key}/`, input),
+
+  getMaintenanceSetting: () => apiClient.get<{ maintenance: boolean; reason: string }>("/admin/settings/maintenance"),
+  updateMaintenanceSetting: (input) => apiClient.patch<{ maintenance: boolean; reason: string }>("/admin/settings/maintenance", input),
 
   // Phase 6
   listInquiryTemplates: () => apiClient.get<AdminInquiryTemplate[]>("/admin/inquiry-templates/"),

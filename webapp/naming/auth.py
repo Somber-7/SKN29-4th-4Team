@@ -37,7 +37,7 @@ PERMISSION_MATRIX: dict[str, str] = {
     "accounts.manage": AdminProfile.Role.SUPERADMIN,
     "roles.manage": AdminProfile.Role.SUPERADMIN,
     "audit.view": AdminProfile.Role.SUPERADMIN,
-    "settings.manage": AdminProfile.Role.SUPERADMIN,
+    "settings.manage": AdminProfile.Role.ADMIN,
 }
 
 

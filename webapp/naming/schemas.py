@@ -148,6 +148,11 @@ class ServiceSettingUpdateIn(Schema):
     value: Any
 
 
+class MaintenanceModeIn(Schema):
+    maintenance: bool
+    reason: str | None = None
+
+
 class SiteTextSettingOut(Schema):
     key: str
     label: str
