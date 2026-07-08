@@ -137,6 +137,16 @@ export interface HistoryEntry {
   status: "완료" | "진행 중";
 }
 
+/** 작명 기록 상세 — "결과 다시 보기" 전용. 새로 생성하지 않고 그때 받은 결과를 그대로 보여준다. */
+export interface HistoryDetail {
+  id: number;
+  /** YYYY.MM.DD */
+  date: string;
+  query: string;
+  request: NameRequest;
+  results: NameResult[];
+}
+
 // ─── 1:1 문의 내역 (User MyPage) ────────────────────────────────────────────────
 
 export interface UserInquiryEntry {

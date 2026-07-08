@@ -1,7 +1,8 @@
 // ─── 인증 · 마이페이지 도메인 API (Django 세션) ───────────────────────────────
 
 import { ApiError, USE_MOCK_AUTH, apiClient, mockDelay } from "./client";
-import type { AuthUser, HistoryEntry, NameRequest, NameResult, UserInquiryEntry } from "@/app/types";
+import { computeMockNameResults } from "./names";
+import type { AuthUser, HistoryDetail, HistoryEntry, NameRequest, NameResult, UserInquiryEntry } from "@/app/types";
 import { HISTORY_ENTRIES } from "./mock/history.mock";
 
 export interface LoginCredentials {
@@ -60,6 +61,8 @@ export interface AuthApi {
   getHistory(): Promise<HistoryEntry[]>;
   /** 이름 추천 결과를 작명 기록에 저장 — 로그인 사용자에 한해 결과 화면에서 자동 호출 */
   saveHistory(input: { query: string; request: NameRequest; results: NameResult[] }): Promise<void>;
+  /** 작명 기록 하나의 저장된 결과 전체를 조회 — "결과 다시 보기" 전용, 재생성하지 않는다 */
+  getHistoryDetail(id: number): Promise<HistoryDetail>;
   getInquiries(): Promise<UserInquiryEntry[]>;
   updateProfile(patch: ProfilePatch): Promise<AuthUser>;
   changePassword(input: { currentPassword: string; nextPassword: string }): Promise<void>;
@@ -125,6 +128,15 @@ const mockAdapter: AuthApi = {
   async saveHistory() {
     await mockDelay(undefined, 0);
   },
+  async getHistoryDetail(id) {
+    const entry = HISTORY_ENTRIES.find((e) => e.id === id);
+    if (!entry) throw new ApiError({ status: 404, message: "작명 기록을 찾을 수 없습니다." });
+    const request: NameRequest = { type: "natural", nameType: "hanja", query: entry.query };
+    return mockDelay(
+      { id: entry.id, date: entry.date, query: entry.query, request, results: computeMockNameResults(request) },
+      0,
+    );
+  },
   async getInquiries() {
     const { INQUIRIES_ENTRIES } = await import("./mock/inquiries.mock");
     return mockDelay(INQUIRIES_ENTRIES, 0);
@@ -165,6 +177,7 @@ const realAdapter: AuthApi = {
   resetPassword: (input) => apiClient.post<void>("/auth/forgot-password", input),
   getHistory: () => apiClient.get<HistoryEntry[]>("/me/history"),
   saveHistory: (input) => apiClient.post<void>("/me/history", input),
+  getHistoryDetail: (id) => apiClient.get<HistoryDetail>(`/me/history/${id}`),
   getInquiries: () => apiClient.get<UserInquiryEntry[]>("/me/inquiries"),
   updateProfile: (patch) => apiClient.patch<AuthUser>("/me", patch),
   changePassword: (input) => apiClient.post<void>("/me/change-password", input),

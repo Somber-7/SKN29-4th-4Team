@@ -15,6 +15,7 @@ urlpatterns = [
     path('auth/forgot-password', views.forgot_password_view, name='forgot_password'),
     path('me', views.me_view, name='me'),
     path('me/history', views.history_view, name='history'),
+    path('me/history/<int:history_id>', views.history_detail_view, name='history_detail'),
     path('me/inquiries', views.inquiries_view, name='inquiries'),
     path('me/change-password', views.change_password_view, name='change_password'),
     path('support/contact', views.contact_submit_view, name='contact_submit'),

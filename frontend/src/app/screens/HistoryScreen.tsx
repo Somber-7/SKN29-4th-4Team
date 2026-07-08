@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { HistoryEntry, NameRequest, Screen } from "@/app/types";
+import { useNavigate } from "react-router-dom";
+import type { HistoryEntry, Screen } from "@/app/types";
 import { useHistory } from "@/app/hooks/useHistory";
 import { PageHeader } from "@/app/components/common/PageHeader";
 import { EmptyState } from "@/app/components/common/EmptyState";
@@ -30,15 +31,13 @@ function EntrySkeleton() {
 
 export function HistoryScreen({
   onNavigate,
-  onOpenResult,
 }: {
   onNavigate: (s: Screen) => void;
-  /** 저장된 요청의 결과 화면 다시 열기 (NameRequest 전달) */
-  onOpenResult: (request: NameRequest) => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("전체");
   const { data: historyEntries = [] } = useHistory();
+  const navigate = useNavigate();
 
   // TODO: API 연동 — 현재는 로딩 시뮬레이션 후 더미 데이터 표시
   useEffect(() => {
@@ -152,7 +151,7 @@ export function HistoryScreen({
                   </div>
 
                   <GhostButton
-                    onClick={() => onOpenResult({ type: "natural", nameType: "hanja", query: entry.query })}
+                    onClick={() => navigate(`/history/${entry.id}`)}
                     className="px-4 py-2.5 text-xs flex-shrink-0 w-full sm:w-auto"
                   >
                     결과 다시 보기
@@ -162,10 +161,6 @@ export function HistoryScreen({
             ))}
           </ul>
         )}
-
-        <p className="text-[11px] text-faint mt-6 text-center">
-          지금은 시안 단계로, 예시 기록이 표시됩니다. {/* TODO: API 연동 */}
-        </p>
       </main>
 
        <Footer onNavigate={onNavigate} />

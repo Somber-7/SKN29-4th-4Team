@@ -7,6 +7,7 @@ from django.contrib.auth import logout as django_logout
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
@@ -292,6 +293,24 @@ def history_view(request):
         if isinstance(item, dict)
     )
     return JsonResponse({}, status=201)
+
+
+@api_login_required
+@require_http_methods(["GET"])
+def history_detail_view(request, history_id):
+    """저장된 작명 기록 하나의 전체 결과(NameResult[])를 반환한다 — "결과 다시 보기"가
+    새 생성 요청을 다시 트리거하지 않고 그때 받은 결과를 그대로 보여주기 위함.
+    user=request.user로 스코프해 다른 회원의 기록 id를 추측해도 열람할 수 없게 한다."""
+    history = get_object_or_404(
+        NamingHistory.objects.prefetch_related("result_set"), pk=history_id, user=request.user
+    )
+    return JsonResponse({
+        "id": history.id,
+        "date": history.created_at.strftime("%Y.%m.%d"),
+        "query": history.query_text,
+        "request": history.request_payload,
+        "results": [r.to_dict() for r in history.result_set.all()],
+    })
 
 
 @api_login_required

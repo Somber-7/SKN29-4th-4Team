@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { Routes, Route, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { NameRequest, Screen } from "@/app/types";
 import { useAuth } from "@/app/providers/AuthProvider";
@@ -67,6 +67,9 @@ const MyPageScreen = lazy(() =>
 );
 const HistoryScreen = lazy(() =>
   import("@/app/screens/HistoryScreen").then((m) => ({ default: m.HistoryScreen })),
+);
+const HistoryDetailScreen = lazy(() =>
+  import("@/app/screens/HistoryDetailScreen").then((m) => ({ default: m.HistoryDetailScreen })),
 );
 const MaintenanceScreen = lazy(() =>
   import("@/app/screens/MaintenanceScreen").then((m) => ({ default: m.MaintenanceScreen })),
@@ -153,8 +156,18 @@ function MyPageRoute() {
   return <MyPageScreen user={user} onUpdateUser={login} onLogout={handleLogout} onNavigate={onNavigate} />;
 }
 function HistoryRoute() {
-  const { openHistoryResult } = useNamingFlow();
-  return <HistoryScreen onNavigate={useScreenNav()} onOpenResult={openHistoryResult} />;
+  return <HistoryScreen onNavigate={useScreenNav()} />;
+}
+function HistoryDetailRoute() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const onNavigate = useScreenNav();
+  const historyId = Number(id);
+  useEffect(() => {
+    if (!Number.isFinite(historyId)) navigate("/history", { replace: true });
+  }, [historyId, navigate]);
+  if (!Number.isFinite(historyId)) return null;
+  return <HistoryDetailScreen id={historyId} onNavigate={onNavigate} />;
 }
 function NotFoundRoute() {
   return <NotFoundScreen onNavigate={useScreenNav()} />;
@@ -315,6 +328,14 @@ export function AppRoutes() {
           element={
             <RequireAuth screen="history">
               <HistoryRoute />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="history/:id"
+          element={
+            <RequireAuth screen="history">
+              <HistoryDetailRoute />
             </RequireAuth>
           }
         />

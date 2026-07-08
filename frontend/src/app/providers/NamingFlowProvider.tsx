@@ -38,8 +38,6 @@ interface NamingFlowContextValue {
   retryFromResults: () => void;
   /** results "다시 추천" → 같은 조건 + 기존 이름 제외(excludeNames)로 재생성 */
   regenerateWithExclusions: (excludeNames: string[]) => void;
-  /** history 목록에서 과거 요청 다시 열기 → results 오버레이 진입 */
-  openHistoryResult: (request: NameRequest) => void;
   /**
    * processing/results/chat 오버레이를 즉시 닫는다. GNB 등에서 실제 라우트(랜딩·인사이트 등)로
    * 이동할 때 호출한다 — RootLayout은 flow가 남아있으면 라우트가 바뀌어도 오버레이를 계속
@@ -90,11 +88,6 @@ export function NamingFlowProvider({ children }: { children: ReactNode }) {
     setFlow("processing");
   }, []);
 
-  const openHistoryResult = useCallback((req: NameRequest) => {
-    setRequest(req);
-    setFlow("results");
-  }, []);
-
   const exitFlow = useCallback(() => setFlow(null), []);
 
   const value: NamingFlowContextValue = {
@@ -108,7 +101,6 @@ export function NamingFlowProvider({ children }: { children: ReactNode }) {
     backToResults,
     retryFromResults,
     regenerateWithExclusions,
-    openHistoryResult,
     exitFlow,
   };
 
