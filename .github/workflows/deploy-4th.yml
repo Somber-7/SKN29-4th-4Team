@@ -26,3 +26,4 @@ jobs:
             cd ~/SKN29-4th-4Team
             git pull origin main
             docker compose -f docker-compose.4th.yml up --build -d
+            docker compose -f docker-compose.4th.yml exec -T django python manage.py migrate --noinput

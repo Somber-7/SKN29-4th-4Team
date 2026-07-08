@@ -436,7 +436,10 @@ jobs:
             cd ~/SKN29-4th-4Team
             git pull origin main
             docker compose -f docker-compose.4th.yml up --build -d
+            docker compose -f docker-compose.4th.yml exec -T django python manage.py migrate --noinput
 ```
+
+> `-T`는 SSH 비대화형 스크립트에서 `exec`가 TTY를 요구해 실패하는 것을 방지한다. 마이그레이션이 자동 실행되므로 Part C의 수동 `migrate` 단계는 최초 1회 부트스트랩에서만 필요하다.
 
 ### B-7. 커밋
 
