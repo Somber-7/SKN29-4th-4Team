@@ -15,8 +15,11 @@ export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
  */
 export const USE_MOCK_NAMES = import.meta.env.VITE_USE_MOCK_NAMES === "true";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const NAMING_API_BASE = import.meta.env.VITE_NAMING_API_BASE_URL ?? "/naming-api";
+// "??"는 빈 문자열("")을 유효한 값으로 취급해 넘기므로, .env에 키만 두고 값을
+// 비워둔 경우(VITE_API_BASE_URL=) 기본 상대경로로 대체되지 않는다. "||"로
+// 빈 문자열도 대체 대상에 포함시켜 .env 주석이 명시한 의도대로 동작하게 한다.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const NAMING_API_BASE = import.meta.env.VITE_NAMING_API_BASE_URL || "/naming-api";
 
 export interface ApiErrorPayload {
   status: number;
