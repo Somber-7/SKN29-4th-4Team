@@ -25,16 +25,20 @@ export type Screen =
   | "adminUsers"
   | "adminSettings";
 
+export type MyPageSection = "profile" | "password" | "history" | "account";
+
 /** 관리자 화면 여부 — App에서 GNB 숨김/AdminLayout 분기에 사용 */
 export function isAdminScreen(s: Screen): boolean {
   return s.startsWith("admin");
 }
 
-/** 로그인 사용자 (시안 단계 — sessionStorage 기반 데모 인증) */
+/** 로그인 사용자 (Django 세션 기반 인증) */
 export interface AuthUser {
   name: string;
+  username: string;
   email: string;
   role: "user" | "admin";
+  joinedAt?: string;
 }
 
 // ─── 작명 요청 DTO ──────────────────────────────────────────────────────────────

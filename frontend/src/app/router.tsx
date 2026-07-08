@@ -88,32 +88,34 @@ function RouteFallback() {
 // effect 기반으로 두어, 로그인 처리와 같은 틱에 일어나는 리다이렉트에서도 항상 최신 user를 본다.
 
 function RequireAuth({ screen, children }: { screen: Screen; children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isLoading) return;
     if (!user) {
       toast.info("로그인이 필요한 페이지입니다.");
       navigate("/login", { state: { redirectTo: screen }, replace: true });
     }
-  }, [user, navigate, screen]);
+  }, [isLoading, user, navigate, screen]);
 
-  if (!user) return null;
+  if (isLoading || !user) return null;
   return <>{children}</>;
 }
 
 function RequireAdmin({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isLoading) return;
     if (user?.role !== "admin") {
       toast.info("관리자 계정으로 로그인해 주세요.");
       navigate(user ? "/" : "/login", { replace: true });
     }
-  }, [user, navigate]);
+  }, [isLoading, user, navigate]);
 
-  if (user?.role !== "admin") return null;
+  if (isLoading || user?.role !== "admin") return null;
   return <>{children}</>;
 }
 

@@ -91,9 +91,6 @@ export function PolicyAgreementModal({
               ))}
             </section>
           ))}
-          <p className="text-[11px] text-hint break-keep pt-2 border-t border-border mt-2">
-            본 문서는 서비스 시안 단계의 예시 문안입니다.
-          </p>
         </div>
 
         {/* Footer */}

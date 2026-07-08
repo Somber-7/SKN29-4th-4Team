@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_NAMING_API_BASE_URL?: string;
   /** "false"가 아니면 mock 어댑터 사용 (기본값: mock) */
   readonly VITE_USE_MOCK?: string;
+  /** "true"면 인증 도메인만 mock 어댑터 사용 */
+  readonly VITE_USE_MOCK_AUTH?: string;
 }
 
 interface ImportMeta {
