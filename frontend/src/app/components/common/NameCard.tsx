@@ -107,7 +107,7 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
           ? `${isKoreanResult ? fullHangul : `${fullHanja} ${fullHangul}`} 상세 정보 보기`
           : undefined
       }
-      className={`bg-white border border-border-warm rounded-2xl p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-[12rem_minmax(0,1fr)_minmax(0,17rem)] gap-x-4 gap-y-3 sm:items-start transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-border/50 hover:shadow-[0_16px_36px_rgba(46,30,8,0.08)] ${
+      className={`bg-white border border-border-warm rounded-2xl p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,17rem)] gap-x-4 gap-y-3 lg:items-start transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-border/50 hover:shadow-[0_16px_36px_rgba(46,30,8,0.08)] ${
         onOpenDetail ? "cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary" : ""
       }`}
       style={{ animation: "mg-fadein 0.35s ease forwards" }}
@@ -136,17 +136,19 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
         </div>
       </div>
 
-      {/* Per-character breakdown (성 포함) — Grid 2열(가변 폭). 칩 단위로 나열해 폭이 좁아져도
-          문장 중간이 아니라 칩 경계에서만 줄바꿈되고, Grid 트랙 경계 밖으로는 절대 넘치지 않는다.
-          순우리말은 이름 부분에 한자 풀이가 없어 성씨만 표시된다(ruby에 음절 자리표시자가 채워져
-          와도 순우리말로 판별되면 표시하지 않는다 — 획수 0 등 무의미한 값이라). */}
-      <div className="flex flex-wrap content-start gap-1.5 sm:border-l sm:border-muted sm:pl-4 min-w-0">
+      {/* Per-character breakdown (성 포함) — Grid 2열(가변 폭). 태블릿 폭(lg 미만)에서는 카드가
+          이름만 보여주는 최소 정보 형태로 접히도록 이 블록 자체를 숨기고, 상세 내역은 클릭 시
+          모달에서 확인한다. 칩 단위로 나열해 폭이 좁아져도 문장 중간이 아니라 칩 경계에서만
+          줄바꿈되고, Grid 트랙 경계 밖으로는 절대 넘치지 않는다. 순우리말은 이름 부분에 한자
+          풀이가 없어 성씨만 표시된다(ruby에 음절 자리표시자가 채워져 와도 순우리말로 판별되면
+          표시하지 않는다 — 획수 0 등 무의미한 값이라). */}
+      <div className="hidden lg:flex flex-wrap content-start gap-1.5 lg:border-l lg:border-muted lg:pl-4 min-w-0">
         {(isKoreanResult ? [result.lastName] : [result.lastName, ...result.ruby]).map((c, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] text-caption bg-hanji/50 border border-border-warm/60 rounded-lg whitespace-nowrap"
+            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] text-caption bg-hanji/50 border border-border-warm/60 rounded-lg max-w-full break-keep"
           >
-            <span className="text-xs font-medium text-secondary-foreground">
+            <span className="text-xs font-medium text-secondary-foreground flex-shrink-0">
               {c.char}({c.reading})
             </span>
             {c.meaning} · {c.strokes}획 · {c.element}行
@@ -159,8 +161,10 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
         )}
       </div>
 
-      {/* 81수리/이름 풀이 + 출처 + 저장 — Grid 3열(최대 17rem). 텍스트 줄과 아이콘 줄을 세로로
-          분리해서, 컬럼 안에서 또 가로로 경쟁하며 겹치는 일이 없게 한다. */}
+      {/* 81수리/이름 풀이 + 저장 — Grid 3열(최대 17rem). 텍스트 줄과 아이콘 줄을 세로로
+          분리해서, 컬럼 안에서 또 가로로 경쟁하며 겹치는 일이 없게 한다. 출처는 원본 논문
+          제목·페이지를 그대로 박스로 나열하면 사용자에게 낯설고 카드 높이만 키우므로 목록에는
+          싣지 않는다 — 친절한 문장 설명은 상세보기 모달의 "참고 출처" 섹션에서 제공한다. */}
       <div className="flex flex-col gap-2 min-w-0">
         {/* 카드에서는 항상 한 줄 요약만 보여준다 — 전체 문장은 클릭 시 상세보기 모달에서 확인.
             truncate(overflow-hidden + whitespace-nowrap + ellipsis)라 문장이 아무리 길어도
@@ -173,12 +177,6 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
         </div>
 
         <div className="flex items-center justify-end gap-2 flex-wrap">
-          <div className="hidden md:flex flex-wrap justify-end gap-1.5">
-            {result.sources.map((src, i) => (
-              <SourceChip key={i} type={src.type} label={src.label} />
-            ))}
-          </div>
-
           {onToggleSave && (
             <button
               onClick={(e) => {

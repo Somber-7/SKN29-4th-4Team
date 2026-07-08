@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import type { NameResult, SourceType } from "@/app/types";
 import { SourceChip } from "@/app/components/common/SourceChip";
@@ -37,9 +38,12 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  return (
+  // document.body에 포탈로 그려서 #root(ResultsScreen 배경)와 완전히 분리한다 —
+  // 인쇄 시 #root만 display:none으로 숨기면 되고, 숨겨진 배경의 min-h-screen 높이가
+  // 인증서 뒤에 남아 PDF가 빈 2페이지로 늘어나는 문제가 구조적으로 발생하지 않는다.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4 sm:p-8 print:bg-transparent print:backdrop-blur-none print:p-0 print:block"
       onClick={onClose}
     >
       <div
@@ -51,17 +55,18 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
         className="bg-white border border-border-warm rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-[0_32px_80px_rgba(26,14,4,0.25)] relative print:max-h-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
         style={{ animation: "mg-fadein 0.25s ease forwards" }}
       >
-        {/* 명가인증 도장 워터마크 — 인증서 모티프 */}
+        {/* 명가인증 도장 워터마크 — 인증서 모티프. right-24로 이격해 닫기 버튼과 겹치지 않게 한다 */}
         <div
-          className="absolute top-6 right-16 w-14 h-14 rounded-full border-2 border-red-500/20 hidden sm:flex print:flex items-center justify-center text-[10px] font-bold text-red-500/30 rotate-12 pointer-events-none select-none"
+          className="absolute top-8 right-24 w-14 h-14 rounded-full border-2 border-red-500/20 hidden sm:flex print:flex items-center justify-center text-[10px] font-bold text-red-500/30 rotate-12 pointer-events-none select-none"
           aria-hidden="true"
         >
           명가인증
         </div>
 
-        {/* Header */}
-        <div className="flex items-start justify-between px-6 sm:px-10 pt-8 sm:pt-10 pb-6 border-b border-hanji">
-          <div>
+        {/* Header — print:는 lg 브레이크포인트가 인쇄 페이지 폭(A4 ≈ 793px)에서 걸리지 않아
+            줄어드는 여백을 보완하기 위해 패딩/폰트 크기를 압축한다 */}
+        <div className="flex items-start justify-between gap-4 px-6 sm:px-10 pt-8 sm:pt-10 pb-6 print:pt-6 print:pb-4 border-b border-hanji">
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold tracking-[0.24em] text-gold-text uppercase mb-3">
               Myeongga Report · 추천 이름 상세
             </p>
@@ -71,19 +76,19 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
               </div>
             ) : (
               <div
-                className="font-hanja text-5xl sm:text-6xl font-light text-foreground tracking-[0.06em] mb-2"
+                className="font-hanja text-5xl sm:text-6xl print:text-4xl font-light text-foreground tracking-[0.06em] mb-2 print:mb-1"
                 lang="ko-Hani"
               >
                 {fullHanja}
               </div>
             )}
-            <div className="flex items-baseline gap-2.5">
+            <div className="flex items-baseline gap-2.5 min-w-0">
               {isKoreanResult ? null : (
                 <>
-                  <span className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide">
+                  <span className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide flex-shrink-0">
                     {fullHangul}
                   </span>
-                  <span className="text-sm font-semibold text-primary">
+                  <span className="text-sm font-semibold text-primary truncate min-w-0" title={result.sukgyeok}>
                     81수리 4격 · {result.sukgyeok}
                   </span>
                 </>
@@ -101,8 +106,11 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
           </button>
         </div>
 
-        {/* Body — 데스크톱 2열: 한자 풀이 | 81수리 + 출처 */}
-        <div className="px-6 sm:px-10 py-7 grid gap-8 lg:grid-cols-2 lg:gap-10">
+        {/* Body — 데스크톱 2열: 한자 풀이 | 81수리 + 출처. print:grid-cols-2를 명시하는 이유는
+            lg:grid-cols-2가 1024px 미만에서는 적용되지 않는데, 인쇄 페이지 폭(A4 ≈ 793px)이
+            항상 그 아래라 인쇄 시 강제로 1열 세로 스택이 되어 내용 높이가 거의 2배로 늘어나고
+            그 결과 A4 한 장을 넘겨 2페이지로 나뉘기 때문이다 — 인쇄 폭과 무관하게 2열을 강제한다 */}
+        <div className="px-6 sm:px-10 py-7 print:py-5 grid gap-8 lg:grid-cols-2 lg:gap-10 print:grid-cols-2 print:gap-6">
           {/* 한자 풀이 (성 포함) — 순우리말은 이름 부분에 한자가 없어 성씨만 나온다 */}
           <section>
             <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
@@ -144,7 +152,7 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
             )}
           </section>
 
-          <div className="space-y-8">
+          <div className="space-y-8 print:space-y-5">
             {isKoreanResult ? (
               /* 이름 풀이 — 순우리말은 획수·오행 4격 대신 뜻풀이 문장으로 근거를 제공한다 */
               <section>
@@ -205,7 +213,7 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 sm:px-10 py-5 border-t border-hanji flex items-center justify-between gap-3">
+        <div className="px-6 sm:px-10 py-5 print:py-3 border-t border-hanji flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] text-hint break-keep">
               추천 결과는 참고용 정보이며 법적 효력이 없습니다.
@@ -231,6 +239,7 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
