@@ -14,6 +14,7 @@ from django.views.decorators.http import require_http_methods
 from .forms import (
     ChangePasswordForm,
     CheckEmailForm,
+    FindUsernameForm,
     ForgotPasswordForm,
     LoginForm,
     PasswordResetIdentityForm,
@@ -124,6 +125,22 @@ def signup_view(request):
         user_agent=request.META.get("HTTP_USER_AGENT", "")[:1000],
     )
     return JsonResponse({}, status=201)
+
+
+@require_http_methods(["POST"])
+def find_username_view(request):
+    form = FindUsernameForm(_parse_json(request))
+    if not form.is_valid():
+        return _error("입력값이 올바르지 않습니다.", 400, form.errors)
+
+    user = User.objects.filter(
+        email__iexact=form.cleaned_data["email"],
+        first_name__iexact=form.cleaned_data["name"],
+    ).first()
+    if user is None:
+        return _error("입력한 이름과 이메일이 일치하는 계정을 찾을 수 없습니다.", 400)
+
+    return JsonResponse({"username": user.username})
 
 
 @require_http_methods(["POST"])
