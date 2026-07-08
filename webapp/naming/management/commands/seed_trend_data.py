@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from naming.models import NameTrendStat, TrendArticle
@@ -70,7 +71,7 @@ class Command(BaseCommand):
                 summary=art["summary"],
                 paragraphs=art["paragraphs"],
                 views=art["views"],
-                date=art["date"]
+                date=datetime.strptime(art["date"], "%Y.%m.%d").date()
             )
             
         self.stdout.write(self.style.SUCCESS('Successfully seeded TrendArticle!'))

@@ -397,7 +397,7 @@ def get_user_activity(
     offset = (page - 1) * page_size
 
     if type == "naming":
-        qs = NamingHistory.objects.filter(user=target).order_by("-created_at")
+        qs = NamingHistory.objects.filter(user=target).order_by("-created_at").prefetch_related("result_set")
         total = qs.count()
         items = [
             {
@@ -406,7 +406,7 @@ def get_user_activity(
                 "createdAt": h.created_at,
                 "detail": h.query_text[:100],
                 "success": None,
-                "results": h.results,
+                "results": [r.to_dict() for r in h.result_set.all()],
             }
             for h in qs[offset : offset + page_size]
         ]
@@ -675,7 +675,7 @@ def _parse_day(value: str | None):
 
 
 def _result_count(history: NamingHistory) -> int:
-    return len(history.results or [])
+    return history.result_set.count()
 
 
 def _metric_source_distribution(metrics) -> list[dict]:
@@ -747,7 +747,7 @@ def get_dashboard(request):
         
     sourceDistribution = _metric_source_distribution(metrics)
         
-    recent_histories = NamingHistory.objects.order_by("-created_at")[:5]
+    recent_histories = NamingHistory.objects.order_by("-created_at").prefetch_related("result_set")[:5]
     recentRequests = []
     for h in recent_histories:
         recentRequests.append({

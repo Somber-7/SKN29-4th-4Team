@@ -14,6 +14,7 @@ from .models import (
     DailyMetric,
     FAQ,
     NamingHistory,
+    NamingResult,
     Notice,
     Setting,
     UserProfile,
@@ -327,11 +328,11 @@ class AdminMetricsApiTests(TestCase):
             answered_inquiries=1,
             source_distribution={"rag": 2},
         )
-        NamingHistory.objects.create(
+        naming_history = NamingHistory.objects.create(
             user=User.objects.create_user(username="metricuser", password="pw12345!"),
             query_text="name",
-            results=[{"hangul": "A"}],
         )
+        NamingResult.objects.create(history=naming_history, sort_order=0, hangul="A")
         AdminAuditLog.objects.create(
             actor=self.super_user,
             actor_username="super1",

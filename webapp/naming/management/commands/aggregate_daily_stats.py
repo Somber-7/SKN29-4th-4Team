@@ -5,14 +5,14 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from naming.models import ContactInquiry, DailyMetric, LoginHistory, NamingHistory
+from naming.models import ContactInquiry, DailyMetric, LoginHistory, NamingHistory, NamingResult
 
 
 def _source_distribution(histories) -> dict[str, int]:
     counts: Counter[str] = Counter()
-    for history in histories:
-        for result in history.results or []:
-            for source in result.get("sources", []) if isinstance(result, dict) else []:
+    for result in NamingResult.objects.filter(history__in=histories):
+        for source in result.detail.get("sources", []):
+            if isinstance(source, dict):
                 label = source.get("type") or source.get("label")
                 if label:
                     counts[str(label)] += 1

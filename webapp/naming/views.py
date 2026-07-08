@@ -10,6 +10,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django.db import IntegrityError
 from django.db.models import Q
 
 from .forms import (
@@ -24,7 +25,7 @@ from .forms import (
     UpdateProfileForm,
     WithdrawForm,
 )
-from .models import ContactInquiry, FAQ, LoginHistory, NamingHistory, Notice, Setting, UserProfile
+from .models import ContactInquiry, FAQ, LoginHistory, NamingHistory, NamingResult, Notice, Setting, UserProfile
 from .user_lifecycle import get_or_create_profile
 from functools import lru_cache
 
@@ -105,6 +106,35 @@ def login_view(request):
             )
         return _error("아이디 또는 비밀번호를 확인해 주세요.", 401)
 
+    # 비밀번호는 맞지만 정지/미승인 계정이면 세션을 만들지 않는다 — UserProfile.status·
+    # approval_status는 관리자 화면(회원 정지·가입 승인)이 쓰는 실질적인 게이트인데
+    # 지금까지는 이 값을 아무도 검사하지 않아 정지된 계정도 그냥 로그인됐다.
+    profile = get_or_create_profile(user)
+    if profile.status == UserProfile.Status.SUSPENDED:
+        LoginHistory.objects.create(
+            user=user,
+            ip=_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:300],
+            success=False,
+        )
+        return _error("정지된 계정입니다. 고객센터로 문의해 주세요.", 403)
+    if profile.approval_status == UserProfile.Approval.PENDING:
+        LoginHistory.objects.create(
+            user=user,
+            ip=_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:300],
+            success=False,
+        )
+        return _error("가입 승인 대기 중인 계정입니다.", 403)
+    if profile.approval_status == UserProfile.Approval.REJECTED:
+        LoginHistory.objects.create(
+            user=user,
+            ip=_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:300],
+            success=False,
+        )
+        return _error("가입이 거절된 계정입니다.", 403)
+
     django_login(request, user)
     LoginHistory.objects.create(
         user=user,
@@ -138,12 +168,17 @@ def signup_view(request):
     if not form.is_valid():
         return _error("입력값이 올바르지 않습니다.", 400, form.errors)
 
-    user = User.objects.create_user(
-        username=form.cleaned_data["username"],
-        email=form.cleaned_data["email"],
-        password=form.cleaned_data["password"],
-        first_name=form.cleaned_data["name"],
-    )
+    try:
+        user = User.objects.create_user(
+            username=form.cleaned_data["username"],
+            email=form.cleaned_data["email"],
+            password=form.cleaned_data["password"],
+            first_name=form.cleaned_data["name"],
+        )
+    except IntegrityError:
+        # clean_email의 iexact 중복 체크는 앱 레벨이라 동시 요청 사이의 레이스 컨디션은
+        # 못 잡는다 — DB 유니크 인덱스(0004 마이그레이션)가 최종 방어선이다.
+        return _error("입력값이 올바르지 않습니다.", 400, {"email": ["중복된 이메일이 있습니다."]})
 
     profile = get_or_create_profile(user)
     if _signup_requires_approval():
@@ -218,26 +253,43 @@ def forgot_password_view(request):
 def history_view(request):
     if request.method == "GET":
         entries = []
-        for item in NamingHistory.objects.filter(user=request.user):
-            results = item.results or []
-            first = results[0] if results else {}
+        histories = NamingHistory.objects.filter(user=request.user).prefetch_related("result_set")
+        for item in histories:
+            results = list(item.result_set.all())
+            first = results[0] if results else None
             entries.append({
                 "id": item.id,
                 "date": item.created_at.strftime("%Y.%m.%d"),
                 "query": item.query_text,
                 "resultCount": len(results),
                 "savedCount": 0,
-                "topName": {"hanja": first.get("hanja", ""), "hangul": first.get("hangul", "")},
+                "topName": {"hanja": first.hanja if first else "", "hangul": first.hangul if first else ""},
                 "status": "완료",
             })
         return JsonResponse(entries, safe=False)
 
     body = _parse_json(request)
-    NamingHistory.objects.create(
+    history = NamingHistory.objects.create(
         user=request.user,
         query_text=body.get("query", ""),
         request_payload=body.get("request", {}),
-        results=body.get("results", []),
+    )
+    NamingResult.objects.bulk_create(
+        NamingResult(
+            history=history,
+            sort_order=i,
+            hangul=item.get("hangul", "") or "",
+            hanja=item.get("hanja", "") or "",
+            sukgyeok=item.get("sukgyeok", "") or "",
+            detail={
+                "lastName": item.get("lastName", {}),
+                "ruby": item.get("ruby", []),
+                "sukgyeokDetail": item.get("sukgyeokDetail", []),
+                "sources": item.get("sources", []),
+            },
+        )
+        for i, item in enumerate(body.get("results", []))
+        if isinstance(item, dict)
     )
     return JsonResponse({}, status=201)
 
@@ -476,7 +528,7 @@ def insights_view(request):
             "summary": a.summary,
             "paragraphs": a.paragraphs,
             "views": a.views,
-            "date": a.date,
+            "date": a.date.strftime("%Y.%m.%d"),
             "thumbnailUrl": a.thumbnail_url,
             "url": a.url,
             "createdAt": a.created_at.isoformat()

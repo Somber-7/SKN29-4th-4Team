@@ -193,7 +193,6 @@ class NamingHistory(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="naming_histories")
     query_text = models.TextField()
     request_payload = models.JSONField(default=dict)
-    results = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -201,6 +200,40 @@ class NamingHistory(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.created_at:%Y-%m-%d %H:%M}"
+
+
+# ── 작명 결과 (NamingHistory.results 통짜 JSON을 정규화) ──
+# hangul/hanja/sukgyeok을 실 컬럼으로 둬 SQL로 집계·검색(예: "가장 많이 추천된 이름")이
+# 가능하게 하고, ruby(한자 분해)·sukgyeokDetail·sources·lastName처럼 화면 표시 전용의
+# 깊은 중첩 구조는 detail JSON에 그대로 보존한다 — to_dict()가 원래 API 응답 형태를
+# 그대로 복원한다.
+class NamingResult(models.Model):
+    history = models.ForeignKey(NamingHistory, on_delete=models.CASCADE, related_name="result_set")
+    sort_order = models.PositiveIntegerField(default=0)
+    hangul = models.CharField(max_length=50, blank=True)
+    hanja = models.CharField(max_length=50, blank=True)
+    sukgyeok = models.TextField(blank=True)  # 순우리말 이름은 문장형 뜻풀이라 길이를 고정하지 않는다
+    detail = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["history_id", "sort_order"]
+        indexes = [
+            models.Index(fields=["hangul"]),
+            models.Index(fields=["hanja"]),
+        ]
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "lastName": self.detail.get("lastName", {}),
+            "hanja": self.hanja,
+            "hangul": self.hangul,
+            "ruby": self.detail.get("ruby", []),
+            "sukgyeok": self.sukgyeok,
+            "sukgyeokDetail": self.detail.get("sukgyeokDetail", []),
+            "sources": self.detail.get("sources", []),
+        }
+
 
 # ── 일간 지표 (대시보드/통계용) ──
 class DailyMetric(models.Model):
@@ -233,6 +266,9 @@ class NameTrendStat(models.Model):
     class Meta:
         ordering = ["-year", "gender", "rank"]
         indexes = [models.Index(fields=["year", "gender"])]
+        constraints = [
+            models.UniqueConstraint(fields=["year", "gender", "rank"], name="unique_year_gender_rank"),
+        ]
 
     def __str__(self):
         return f"{self.year} {self.gender} {self.rank}위 {self.name}"
@@ -245,7 +281,7 @@ class TrendArticle(TimeStamped):
     summary = models.CharField(max_length=500, blank=True)
     paragraphs = models.JSONField(default=list)
     views = models.IntegerField(default=0)
-    date = models.CharField(max_length=20) # e.g. "2026.07.03"
+    date = models.DateField()  # API 응답 시 "2026.07.03" 형식으로 재포맷(views.insights_view)
     thumbnail_url = models.URLField(blank=True)
     url = models.URLField(blank=True)
 
