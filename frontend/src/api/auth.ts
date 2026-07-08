@@ -37,6 +37,11 @@ export interface PasswordResetIdentityInput {
   email: string;
 }
 
+export interface FindUsernameInput {
+  name: string;
+  email: string;
+}
+
 const ADMIN_USER = { username: "admin", email: "admin@myeongga.co.kr", password: "admin1234!", name: "관리자" };
 const TEST_USER = { username: "user01", email: "user@myeongga.co.kr", password: "user1234!", name: "김명가" };
 const INVALID_CREDENTIALS = "아이디 또는 비밀번호를 확인해 주세요.";
@@ -48,6 +53,7 @@ export interface AuthApi {
   logout(): Promise<void>;
   signup(input: SignupInput): Promise<void>;
   checkEmail(email: string): Promise<{ available: boolean }>;
+  findUsername(input: FindUsernameInput): Promise<{ username: string }>;
   verifyPasswordResetAccount(input: PasswordResetIdentityInput): Promise<void>;
   resetPassword(input: PasswordResetInput): Promise<void>;
   /** 작명 기록 (History · MyPage 화면 공용) */
@@ -92,6 +98,18 @@ const mockAdapter: AuthApi = {
     await mockDelay(undefined, 250);
     return { available: email.trim().toLowerCase() !== TEST_USER.email };
   },
+  async findUsername({ name, email }) {
+    await mockDelay(undefined, 500);
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedName === TEST_USER.name && normalizedEmail === TEST_USER.email) {
+      return mockDelay({ username: TEST_USER.username }, 0);
+    }
+    if (normalizedName === ADMIN_USER.name && normalizedEmail === ADMIN_USER.email) {
+      return mockDelay({ username: ADMIN_USER.username }, 0);
+    }
+    throw new ApiError({ status: 400, message: "입력한 이름과 이메일이 일치하는 계정을 찾을 수 없습니다." });
+  },
   async verifyPasswordResetAccount() {
     await mockDelay(undefined, 500);
   },
@@ -132,6 +150,7 @@ const realAdapter: AuthApi = {
   logout: () => apiClient.post<void>("/auth/logout"),
   signup: (input) => apiClient.post<void>("/auth/signup", input),
   checkEmail: (email) => apiClient.post<{ available: boolean }>("/auth/check-email", { email }),
+  findUsername: (input) => apiClient.post<{ username: string }>("/auth/find-username", input),
   verifyPasswordResetAccount: (input) => apiClient.post<void>("/auth/verify-password-reset-account", input),
   resetPassword: (input) => apiClient.post<void>("/auth/forgot-password", input),
   getHistory: () => apiClient.get<HistoryEntry[]>("/me/history"),

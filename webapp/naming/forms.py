@@ -71,6 +71,17 @@ class CheckEmailForm(forms.Form):
         return self.cleaned_data["email"].strip().lower()
 
 
+class FindUsernameForm(forms.Form):
+    name = forms.CharField(max_length=150)
+    email = forms.EmailField()
+
+    def clean_name(self):
+        return self.cleaned_data["name"].strip()
+
+    def clean_email(self):
+        return self.cleaned_data["email"].strip().lower()
+
+
 class PasswordResetIdentityForm(forms.Form):
     name = forms.CharField(max_length=150)
     username = forms.CharField(min_length=4, max_length=20)
