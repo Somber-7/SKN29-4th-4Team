@@ -68,12 +68,25 @@ export function useAdminAccountMutations() {
     },
   });
 
+  const deleteAccount = useMutation({
+    mutationFn: adminApi.deleteAccount,
+    onSuccess: () => {
+      toast.success("관리자 계정이 삭제되었습니다.");
+      queryClient.invalidateQueries({ queryKey: ["admin", "accounts"] });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || "계정 삭제에 실패했습니다.";
+      toast.error(msg);
+    },
+  });
+
   return {
     createAccount,
     updateAccount,
     updateRole,
     unlockAccount,
     forcePasswordReset,
+    deleteAccount,
   };
 }
 

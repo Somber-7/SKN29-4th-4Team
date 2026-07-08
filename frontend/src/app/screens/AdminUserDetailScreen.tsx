@@ -116,7 +116,7 @@ export function AdminUserDetailScreen() {
     if (!userId) return;
     try {
       await deleteUser.mutateAsync(userId);
-      toast.success("회원이 삭제(소프트 삭제)되었습니다.");
+      toast.success("회원이 완전히 삭제되었습니다.");
       navigate("/users");
     } catch (err) {
       toast.error(errorMessage(err, "삭제에 실패했습니다."));
@@ -317,9 +317,9 @@ export function AdminUserDetailScreen() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>회원을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>회원을 완전히 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              소프트 삭제로 처리되며, 동일 이메일로 즉시 재가입이 가능해집니다. 활동 이력은 보존됩니다.
+              계정과 작명 기록·로그인 이력 등 관련 데이터가 모두 영구 삭제되며 되돌릴 수 없습니다. 동일 이메일로 즉시 재가입은 가능합니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
