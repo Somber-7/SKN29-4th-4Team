@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, TrendingUp, TrendingDown, Minus, Search, Clock3 } from "lucide-react";
 import {
@@ -24,7 +24,6 @@ const GRID = "var(--color-border)";
 const AXIS_LABEL = "var(--color-caption)";
 const LINE_COLOR = "var(--color-primary)";
 
-type Gender = "boy" | "girl";
 type ArticleFilter = "all" | InsightCategory;
 type SortOrder = "latest" | "popular";
 

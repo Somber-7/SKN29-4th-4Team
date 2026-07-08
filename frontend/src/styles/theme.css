@@ -237,21 +237,26 @@
 }
 
 
-/* ─── 인증서 인쇄/저장: 화면의 나머지는 숨기고 #mg-certificate만 종이에 출력 ───── */
+/* ─── 인증서 인쇄/저장: #root(배경 화면 전체)를 display:none으로 걷어내고 인증서만 출력 ─────
+   NameDetailModal은 document.body에 portal로 그려져 #root의 형제 요소이므로, #root를
+   완전히 레이아웃에서 제거해도 인증서에는 영향이 없다. 이전에는 visibility:hidden으로만
+   숨겼는데, 이 속성은 화면에서 안 보이게 할 뿐 배경(min-h-screen)의 레이아웃 높이는
+   그대로 차지해 PDF가 불필요한 빈 2페이지로 늘어나는 문제가 있었다. */
 
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  #mg-certificate,
-  #mg-certificate * {
-    visibility: visible;
+  #root {
+    display: none;
   }
   #mg-certificate {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    break-inside: avoid;
+  }
+  @page {
+    size: A4;
+    margin: 12mm;
   }
 }
 

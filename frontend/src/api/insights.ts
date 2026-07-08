@@ -1,18 +1,8 @@
 // ─── 이름 트렌드(인사이트) 도메인 API (Django 예정) ────────────────────────────
 // TODO(API): GET /api/insights 로 대체 — 통계청 출생신고 통계·대법원 전산 데이터 집계
 
-import { apiClient, mockDelay } from "./client";
-import {
-  INSIGHT_ARTICLES,
-  INSIGHT_CARDS,
-  INSIGHT_CATEGORY_LABELS,
-  TOTAL_TREND_COMBINED,
-  TREND_META,
-  TREND_NAMES_BOY,
-  TREND_NAMES_GIRL,
-  type InsightArticle,
-  type InsightCategory,
-} from "./mock/insights.mock";
+import { apiClient } from "./client";
+import type { InsightArticle, InsightCategory } from "./mock/insights.mock";
 
 export type { InsightArticle, InsightCategory };
 

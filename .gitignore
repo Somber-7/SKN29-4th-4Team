@@ -26,7 +26,11 @@ data/chroma/
 
 frontend/node_modules/
 frontend/dist/
-frontend/.env
+# frontend/.env는 의도적으로 추적한다 — VITE_* 값은 시크릿이 아니라 빌드 시 번들에
+# 그대로 노출되는 공개 UI 플래그이고, 배포 파이프라인이 EC2에서 git pull → docker
+# build만 하므로(별도 시크릿 주입 단계 없음) 커밋되어 있지 않으면 빌드에 반영될 수 없다.
+# 위 1번 줄의 ".env"는 재귀 매칭되어 frontend/.env도 가리므로 예외 처리한다.
+!/frontend/.env
 
 # Codex local guidance/worklogs
 AGENTS.md

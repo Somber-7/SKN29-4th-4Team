@@ -14,13 +14,17 @@ const USERNAME_RE = /^[A-Za-z0-9_]{4,20}$/;
 const PASSWORD_MESSAGE = "영문, 숫자, 기호를 포함해 8~15자로 입력해 주세요.";
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^\w\s])\S{8,15}$/;
 
-type View = "login" | "reset-verify" | "reset-password" | "reset-done";
+type View = "login" | "find-id" | "find-id-done" | "reset-verify" | "reset-password" | "reset-done";
 interface ResetErrors {
   name?: string;
   username?: string;
   email?: string;
   nextPassword?: string;
   confirm?: string;
+}
+interface FindIdErrors {
+  name?: string;
+  email?: string;
 }
 
 /** 제출 중 버튼에 표시하는 작은 회전 링 — ProcessingScreen의 mg-spin과 동일 모션 */
@@ -62,6 +66,13 @@ export function LoginScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 아이디 찾기 폼
+  const [findIdName, setFindIdName] = useState("");
+  const [findIdEmail, setFindIdEmail] = useState("");
+  const [findIdErrors, setFindIdErrors] = useState<FindIdErrors>({});
+  const [isFindingId, setIsFindingId] = useState(false);
+  const [foundUsername, setFoundUsername] = useState("");
 
   // 비밀번호 재설정 폼
   const [resetName, setResetName] = useState("");
@@ -117,6 +128,55 @@ export function LoginScreen({
 
   const openForgotPassword = () => {
     setResetUsername(username);
+    setResetPassword("");
+    setResetConfirm("");
+    setResetErrors({});
+    setView("reset-verify");
+  };
+
+  const openFindId = () => {
+    setFindIdName("");
+    setFindIdEmail("");
+    setFindIdErrors({});
+    setView("find-id");
+  };
+
+  const handleFindUsername = async () => {
+    if (isFindingId) return;
+    const next: FindIdErrors = {};
+    if (!findIdName.trim()) next.name = "이름을 입력해 주세요.";
+    const emailError = validateEmailField(findIdEmail);
+    if (emailError) next.email = emailError;
+    setFindIdErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setIsFindingId(true);
+    try {
+      const { username: found } = await authApi.findUsername({
+        name: findIdName.trim(),
+        email: findIdEmail.trim(),
+      });
+      setFoundUsername(found);
+      setView("find-id-done");
+    } catch (error) {
+      setFindIdErrors((prev) => ({
+        ...prev,
+        email: getApiMessage(error, "일치하는 계정을 찾을 수 없습니다."),
+      }));
+    } finally {
+      setIsFindingId(false);
+    }
+  };
+
+  /** 아이디 찾기 결과 → 찾은 아이디로 로그인 폼에 복귀 */
+  const continueToLoginWithFoundId = () => {
+    setUsername(foundUsername);
+    setView("login");
+  };
+
+  /** 아이디 찾기 결과 → 같은 계정으로 비밀번호 재설정 이어가기 */
+  const continueToResetFromFindId = () => {
+    setResetUsername(foundUsername);
     setResetPassword("");
     setResetConfirm("");
     setResetErrors({});
@@ -248,18 +308,9 @@ export function LoginScreen({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor="login-password" className="block text-xs font-medium text-label">
-                      비밀번호
-                    </label>
-                    <button
-                      type="button"
-                      onClick={openForgotPassword}
-                      className="text-[11px] text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    >
-                      비밀번호를 잊으셨나요?
-                    </button>
-                  </div>
+                  <label htmlFor="login-password" className="block text-xs font-medium text-label mb-1.5">
+                    비밀번호
+                  </label>
                   <div className="relative">
                     <input
                       id="login-password"
@@ -294,6 +345,23 @@ export function LoginScreen({
                   {errors.password && (
                     <p role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>
                   )}
+                  <div className="flex items-center justify-center gap-3 mt-2.5">
+                    <button
+                      type="button"
+                      onClick={openFindId}
+                      className="text-[11px] text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      아이디 찾기
+                    </button>
+                    <span className="text-border" aria-hidden="true">|</span>
+                    <button
+                      type="button"
+                      onClick={openForgotPassword}
+                      className="text-[11px] text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      비밀번호 찾기
+                    </button>
+                  </div>
                 </div>
 
                 <PrimaryButton
@@ -318,6 +386,118 @@ export function LoginScreen({
                   회원가입
                 </button>
               </p>
+            </>
+          )}
+
+          {view === "find-id" && (
+            <>
+              <div className="relative z-10 mb-8 text-center">
+                <p className="text-[10px] tracking-[0.32em] text-primary uppercase mb-3">Find ID</p>
+                <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">아이디 찾기</h1>
+                <p className="text-sm text-muted-foreground break-keep">
+                  가입 시 입력한 이름과 이메일로 아이디를 확인합니다.
+                </p>
+              </div>
+
+              <div className="relative z-10 bg-white border border-border p-7 space-y-5">
+                <div>
+                  <label htmlFor="find-id-name" className="block text-xs font-medium text-label mb-1.5">
+                    이름
+                  </label>
+                  <input
+                    id="find-id-name"
+                    type="text"
+                    autoComplete="name"
+                    value={findIdName}
+                    disabled={isFindingId}
+                    onChange={(e) => {
+                      setFindIdName(e.target.value);
+                      setFindIdErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    placeholder="홍길동"
+                    aria-invalid={!!findIdErrors.name}
+                    className={inputClass(!!findIdErrors.name)}
+                  />
+                  {findIdErrors.name && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{findIdErrors.name}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="find-id-email" className="block text-xs font-medium text-label mb-1.5">
+                    이메일
+                  </label>
+                  <input
+                    id="find-id-email"
+                    type="email"
+                    autoComplete="email"
+                    value={findIdEmail}
+                    disabled={isFindingId}
+                    onChange={(e) => {
+                      setFindIdEmail(e.target.value);
+                      setFindIdErrors((prev) => ({ ...prev, email: undefined }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleFindUsername();
+                    }}
+                    placeholder="name@example.com"
+                    aria-invalid={!!findIdErrors.email}
+                    className={inputClass(!!findIdErrors.email)}
+                  />
+                  {findIdErrors.email && (
+                    <p role="alert" className="text-xs text-destructive mt-1">{findIdErrors.email}</p>
+                  )}
+                </div>
+
+                <PrimaryButton
+                  onClick={handleFindUsername}
+                  disabled={isFindingId}
+                  aria-busy={isFindingId}
+                  className="w-full px-4 py-3 inline-flex items-center justify-center gap-2"
+                >
+                  {isFindingId && <ButtonSpinner />}
+                  {isFindingId ? "확인 중" : "아이디 찾기"}
+                </PrimaryButton>
+
+                <button
+                  type="button"
+                  onClick={() => setView("login")}
+                  className="w-full text-center text-xs text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  ← 로그인으로 돌아가기
+                </button>
+              </div>
+            </>
+          )}
+
+          {view === "find-id-done" && (
+            <>
+              <div className="relative z-10 mb-8 text-center">
+                <p className="text-[10px] tracking-[0.32em] text-primary uppercase mb-3">Find ID</p>
+                <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">아이디 확인 완료</h1>
+                <p className="text-sm text-muted-foreground break-keep">
+                  입력하신 정보와 일치하는 아이디를 찾았습니다.
+                </p>
+              </div>
+
+              <div className="relative z-10 bg-white border border-border p-7 space-y-5">
+                <div className="border border-muted bg-muted/20 p-4 text-center">
+                  <p className="text-xs text-label mb-1">회원님의 아이디</p>
+                  <p className="text-lg font-semibold text-foreground tracking-wide">{foundUsername}</p>
+                </div>
+
+                <PrimaryButton onClick={continueToLoginWithFoundId} className="w-full px-4 py-3">
+                  이 아이디로 로그인하기
+                </PrimaryButton>
+
+                <button
+                  type="button"
+                  onClick={continueToResetFromFindId}
+                  className="w-full text-center text-xs text-caption hover:text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  비밀번호도 재설정하기
+                </button>
+              </div>
             </>
           )}
 

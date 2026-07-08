@@ -2,26 +2,41 @@ import { useEffect, useMemo, useState } from "react";
 import { parseNameQuery } from "@/app/utils/nameQueryParser";
 import { ParsedChipRow } from "@/app/components/common/ParsedChips";
 import { PrimaryButton } from "@/app/components/common/Button";
-import type { NameRequest } from "@/app/types";
+import type { NameRequest, NameType } from "@/app/types";
 
 // 칩은 제출 전 검증(성씨·성별 필수)을 통과하는 완성형 예시여야 한다
-const PROMPT_CHIPS = [
+const HANJA_PROMPT_CHIPS = [
   "김씨 성, 水 기운 두 글자 남자 이름",
   "이씨 성, 土·木 오행, 학문에 좋은 아들 이름",
   "박씨 성, 획수 합 20~25, 여자 이름",
 ];
 
+const KOREAN_PROMPT_CHIPS = [
+  "임씨 성, 맑고 씩씩한 느낌의 순우리말 여자 이름",
+  "최씨 성, 봄처럼 따뜻한 느낌의 순우리말 아들 이름",
+  "한씨 성, 한 글자 순우리말 딸 이름",
+];
+
+const PLACEHOLDER_BY_TYPE: Record<NameType, string> = {
+  hanja: "예: 김씨 성에 물(水) 기운, 획수 좋은 두 글자 남자 이름 추천해줘",
+  korean: "예: 임씨 성에 맑고 씩씩한 느낌의 순우리말 두 글자 여자 이름 추천해줘",
+};
+
 /** 자연어로 조건을 설명하는 입력 폼 — 상태를 내부로 캡슐화하고 NameRequest만 상위로 전달한다 */
 export function NaturalInputForm({
   active,
+  nameType,
   onSubmit,
 }: {
   /** 현재 탭이 활성 상태인지 — 비활성화될 때 에러 표시를 초기화한다 (기존 switchMode 동작과 동일) */
   active: boolean;
+  /** 상위(InputScreen)의 이름 유형 탭 선택 — 예시 문구와 요청 페이로드에 반영한다 */
+  nameType: NameType;
   onSubmit: (request: NameRequest) => void;
 }) {
   const [query, setQuery] = useState("");
   const [queryError, setQueryError] = useState("");
+  const promptChips = nameType === "korean" ? KOREAN_PROMPT_CHIPS : HANJA_PROMPT_CHIPS;
 
   // 자연어 입력 즉시 조건 파싱 — 입력창 아래 칩에 실시간 반영 (미리보기 전용, 결과 조회에는 사용하지 않음)
   const parsed = useMemo(() => parseNameQuery(query), [query]);
@@ -47,7 +62,7 @@ export function NaturalInputForm({
       return;
     }
     setQueryError("");
-    onSubmit({ type: "natural", query: query.trim() });
+    onSubmit({ type: "natural", nameType, query: query.trim() });
   };
 
   return (
@@ -75,7 +90,7 @@ export function NaturalInputForm({
               handleSubmit();
             }
           }}
-          placeholder="예: 김씨 성에 물(水) 기운, 획수 좋은 두 글자 남자 이름 추천해줘"
+          placeholder={PLACEHOLDER_BY_TYPE[nameType]}
           rows={4}
           maxLength={300}
           aria-invalid={!!queryError}
@@ -102,7 +117,7 @@ export function NaturalInputForm({
       {/* Bottom Row: Prompt chips & Submit button placed side-by-side to save vertical height */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-auto pt-4 border-t border-border-warm/40">
         <div className="flex flex-wrap gap-1.5 flex-1">
-          {PROMPT_CHIPS.map((chip, i) => (
+          {promptChips.map((chip, i) => (
             <button
               key={i}
               onClick={() => {

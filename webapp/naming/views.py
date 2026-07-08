@@ -16,6 +16,7 @@ from .forms import (
     ChangePasswordForm,
     CheckEmailForm,
     ContactForm,
+    FindUsernameForm,
     ForgotPasswordForm,
     LoginForm,
     PasswordResetIdentityForm,
@@ -161,6 +162,22 @@ def signup_view(request):
 
 
 @require_http_methods(["POST"])
+def find_username_view(request):
+    form = FindUsernameForm(_parse_json(request))
+    if not form.is_valid():
+        return _error("입력값이 올바르지 않습니다.", 400, form.errors)
+
+    user = User.objects.filter(
+        email__iexact=form.cleaned_data["email"],
+        first_name__iexact=form.cleaned_data["name"],
+    ).first()
+    if user is None:
+        return _error("입력한 이름과 이메일이 일치하는 계정을 찾을 수 없습니다.", 400)
+
+    return JsonResponse({"username": user.username})
+
+
+@require_http_methods(["POST"])
 def verify_password_reset_account_view(request):
     form = PasswordResetIdentityForm(_parse_json(request))
     if not form.is_valid():
@@ -292,10 +309,6 @@ def inquiries_view(request):
     return JsonResponse(items, safe=False)
 
 
-@require_http_methods(["POST"])
-def heartbeat_view(request):
-    """프론트엔드에서 세션 유지를 위해 30초마다 보내는 ping을 받아주는 엔드포인트"""
-    return JsonResponse({"status": "ok"})
 
 
 @api_login_required
@@ -400,8 +413,13 @@ def faq_list_view(request):
 from .models import NameTrendStat, TrendArticle
 from django.db.models import Sum
 
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def heartbeat_view(request):
+    """GET: 유지보수 모드 상태 확인. POST: 프론트엔드가 세션 유지를 위해
+    30초마다 보내는 ping(clientId·currentPath는 응답에 영향 없이 무시됨)."""
+    if request.method == "POST":
+        return JsonResponse({"status": "ok"})
+
     from .models import Setting
     setting = Setting.objects.filter(key="maintenance").first()
     maintenance = False
