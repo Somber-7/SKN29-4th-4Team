@@ -131,18 +131,23 @@ export function ResultsScreen({
                 />
               </div>
             ) : (
-              <p className="flex flex-wrap items-center gap-1.5 text-xs text-caption mt-1.5">
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] font-bold text-pine bg-pine/8 px-2 py-0.5 rounded border border-pine/25"
-                  style={{ animation: "mg-fadein 0.3s ease-out both" }}
-                >
-                  <svg width="9" height="7" viewBox="0 0 10 8" fill="none" aria-hidden="true">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  4대 기준 검증 완료
-                </span>
-                대법원 인명 한자 · 81수리 · 자원오행 · KCI 문헌
-              </p>
+              // 순우리말은 한자·오행·획수를 아예 쓰지 않아 "대법원 인명 한자·81수리·자원오행"
+              // 3개 기준이 무의미하다(카드에도 "한자·오행·획수를 사용하지 않습니다"라고 명시) —
+              // 한자 이름일 때만 이 검증 배지를 보여준다.
+              request.nameType !== "korean" && (
+                <p className="flex flex-wrap items-center gap-1.5 text-xs text-caption mt-1.5">
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-pine bg-pine/8 px-2 py-0.5 rounded border border-pine/25"
+                    style={{ animation: "mg-fadein 0.3s ease-out both" }}
+                  >
+                    <svg width="9" height="7" viewBox="0 0 10 8" fill="none" aria-hidden="true">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    4대 기준 검증 완료
+                  </span>
+                  대법원 인명 한자 · 81수리 · 자원오행 · KCI 문헌
+                </p>
+              )
             )}
           </div>
           {!streaming && (

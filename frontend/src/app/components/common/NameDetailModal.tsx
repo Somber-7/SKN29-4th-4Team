@@ -82,13 +82,13 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
                 {fullHanja}
               </div>
             )}
-            <div className="flex items-baseline gap-2.5 min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 min-w-0">
               {isKoreanResult ? null : (
                 <>
                   <span className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide flex-shrink-0">
                     {fullHangul}
                   </span>
-                  <span className="text-sm font-semibold text-primary truncate min-w-0" title={result.sukgyeok}>
+                  <span className="text-sm font-semibold text-primary break-keep min-w-0">
                     81수리 4격 · {result.sukgyeok}
                   </span>
                 </>
@@ -193,20 +193,29 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
               </section>
             )}
 
-            {/* 참고 출처 */}
+            {/* 참고 출처 — 순우리말은 출처 label에 논문 원제(+페이지)가 그대로 들어와 칩으로
+                보여주면 낯설고, 같은 type의 논문을 여러 건 인용해도 설명 문구가 반복돼 보인다.
+                type별로 한 번만, 설명 문구만 보여준다. 한자 결과는 원문 라벨(예: 법령 조항명,
+                자원오행 사전명)이 실제로 유의미해 기존 칩+설명 방식을 유지한다. */}
             <section>
               <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
                 참고 출처
               </p>
               <div className="space-y-3">
-                {result.sources.map((src, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <SourceChip type={src.type} label={src.label} />
-                    <p className="text-xs text-ink break-keep flex-1 pt-0.5 leading-relaxed">
-                      {SOURCE_DESCRIPTIONS[src.type]}
-                    </p>
-                  </div>
-                ))}
+                {isKoreanResult
+                  ? Array.from(new Set(result.sources.map((src) => src.type))).map((type) => (
+                      <p key={type} className="text-xs text-ink break-keep leading-relaxed">
+                        {SOURCE_DESCRIPTIONS[type]}
+                      </p>
+                    ))
+                  : result.sources.map((src, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <SourceChip type={src.type} label={src.label} />
+                        <p className="text-xs text-ink break-keep flex-1 pt-0.5 leading-relaxed">
+                          {SOURCE_DESCRIPTIONS[src.type]}
+                        </p>
+                      </div>
+                    ))}
               </div>
             </section>
           </div>

@@ -138,21 +138,24 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
 
       {/* Per-character breakdown (성 포함) — Grid 2열(가변 폭). 태블릿 폭(lg 미만)에서는 카드가
           이름만 보여주는 최소 정보 형태로 접히도록 이 블록 자체를 숨기고, 상세 내역은 클릭 시
-          모달에서 확인한다. 칩 단위로 나열해 폭이 좁아져도 문장 중간이 아니라 칩 경계에서만
-          줄바꿈되고, Grid 트랙 경계 밖으로는 절대 넘치지 않는다. 순우리말은 이름 부분에 한자
-          풀이가 없어 성씨만 표시된다(ruby에 음절 자리표시자가 채워져 와도 순우리말로 판별되면
-          표시하지 않는다 — 획수 0 등 무의미한 값이라). */}
-      <div className="hidden lg:flex flex-wrap content-start gap-1.5 lg:border-l lg:border-muted lg:pl-4 min-w-0">
+          모달에서 확인한다. 글자마다 한 줄씩 세로로 쌓아(flex-col) 항상 카드 전체 폭을 쓰게
+          하고, 칩 내부도 "글자(음)" / "뜻 · 획수 · 오행" 두 줄로 나눠 좁은 폭에 욱여넣다 뜻풀이가
+          잘려 보이는 일이 없게 한다. 순우리말은 이름 부분에 한자 풀이가 없어 성씨만 표시된다
+          (ruby에 음절 자리표시자가 채워져 와도 순우리말로 판별되면 표시하지 않는다 — 획수 0 등
+          무의미한 값이라). */}
+      <div className="hidden lg:flex flex-col gap-1.5 lg:border-l lg:border-muted lg:pl-4 min-w-0">
         {(isKoreanResult ? [result.lastName] : [result.lastName, ...result.ruby]).map((c, i) => (
-          <span
+          <div
             key={i}
-            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] text-caption bg-hanji/50 border border-border-warm/60 rounded-lg max-w-full break-keep"
+            className="px-2.5 py-1.5 text-caption bg-hanji/50 border border-border-warm/60 rounded-lg"
           >
-            <span className="text-xs font-medium text-secondary-foreground flex-shrink-0">
+            <span className="text-xs font-medium text-secondary-foreground">
               {c.char}({c.reading})
             </span>
-            {c.meaning} · {c.strokes}획 · {c.element}行
-          </span>
+            <p className="text-[11px] break-keep">
+              {c.meaning} · {c.strokes}획 · {c.element}行
+            </p>
+          </div>
         ))}
         {isKoreanResult && (
           <span className="text-[11px] text-caption whitespace-normal break-keep">
