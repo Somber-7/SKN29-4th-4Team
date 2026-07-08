@@ -4,8 +4,8 @@ import { formatNameRequest } from "@/app/utils/formatNameRequest";
 import { PrimaryButton, GhostButton } from "@/app/components/common/Button";
 import { useNameResults } from "@/app/hooks/useNameResults";
 
-/** 서비스 소개의 4단계 검증 프로세스와 동일한 순서로 진행 상황을 표현 */
-const PROCESSING_STEPS = [
+/** 서비스 소개의 4단계 검증 프로세스와 동일한 순서로 진행 상황을 표현 (한자 이름) */
+const HANJA_STEPS = [
   {
     label: "조건을 분석하는 중",
     desc: "입력하신 문장에서 성씨·오행·획수·의미를 추출합니다.",
@@ -24,12 +24,32 @@ const PROCESSING_STEPS = [
   },
 ];
 
+/** 순우리말 이름 전용 단계 — 오행·획수·한자를 사용하지 않으므로 문구를 별도로 둔다 */
+const KOREAN_STEPS = [
+  {
+    label: "조건을 분석하는 중",
+    desc: "입력하신 문장에서 성씨·느낌·의미를 추출합니다.",
+  },
+  {
+    label: "순우리말 낱말을 찾는 중",
+    desc: "뜻과 어감이 어울리는 순우리말 낱말을 검색합니다.",
+  },
+  {
+    label: "이름으로 어울리는지 검증하는 중",
+    desc: "성씨와의 발음 조화, 어색한 표현 여부를 확인합니다.",
+  },
+  {
+    label: "최적의 이름을 엄선하는 중",
+    desc: "검증을 통과한 이름만 근거와 함께 정리합니다.",
+  },
+];
+
 /** 단계 사이 전환 간격 */
 const STEP_INTERVAL_MS = 1400;
 /** 결과가 준비된 뒤 결과 화면으로 넘어가기까지의 지연 */
 const COMPLETE_DELAY_MS = 600;
-/** 마지막 단계 인덱스 — 실 응답이 도착할 때까지 여기서 대기한다 */
-const LAST_STEP = PROCESSING_STEPS.length - 1;
+/** 마지막 단계 인덱스 — 실 응답이 도착할 때까지 여기서 대기한다 (두 유형 모두 4단계로 동일) */
+const LAST_STEP = HANJA_STEPS.length - 1;
 
 export function ProcessingScreen({
   request,
@@ -43,6 +63,7 @@ export function ProcessingScreen({
 }) {
   const [step, setStep] = useState(0);
   const [stopped, setStopped] = useState(false);
+  const steps = request?.nameType === "korean" ? KOREAN_STEPS : HANJA_STEPS;
 
   // ResultsScreen과 같은 queryKey로 실 요청을 미리 시작한다 (react-query가 fetch를 공유).
   // 응답이 도착하면(성공/실패) 마지막 단계에서 결과 화면으로 넘어간다.
@@ -64,7 +85,7 @@ export function ProcessingScreen({
   }, [step, stopped, resultReady, onComplete]);
 
   // 진행률: 마지막 단계는 응답 대기 중이므로 응답 전까지 100%를 채우지 않는다
-  const progress = Math.min((step + (resultReady ? 1 : 0)) / PROCESSING_STEPS.length, 1);
+  const progress = Math.min((step + (resultReady ? 1 : 0)) / steps.length, 1);
 
   return (
     <div className="pt-16 min-h-screen bg-hanji/40 relative overflow-hidden flex items-center justify-center">
@@ -134,7 +155,7 @@ export function ProcessingScreen({
 
           {/* Step list */}
           <div className="space-y-5 text-left mb-10" role="status" aria-live="polite">
-            {PROCESSING_STEPS.map((s, i) => {
+            {steps.map((s, i) => {
               const done = step > i;
               const active = step === i;
               return (

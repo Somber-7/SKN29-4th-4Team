@@ -4,7 +4,7 @@ import { InputIntroPanel } from "@/app/components/forms/InputIntroPanel";
 import { NaturalInputForm } from "@/app/components/forms/NaturalInputForm";
 import { StructuredInputForm } from "@/app/components/forms/StructuredInputForm";
 import { Footer } from "@/app/components/layout/Footer";
-import type { NameRequest } from "@/app/types";
+import type { NameRequest, NameType } from "@/app/types";
 
 type InputMode = "natural" | "structured";
 
@@ -13,8 +13,14 @@ type InputMode = "natural" | "structured";
 // 이 화면은 탭 전환 레이아웃과 두 패널의 그리드 겹침(높이 고정) 배치만 담당한다.
 // 탭 자체는 @radix-ui/react-tabs로 구현 — 좌우 화살표 전환·roving tabindex는
 // Radix가 기본 제공하므로 기존의 수제 keydown 핸들러는 더 이상 필요 없다.
+//
+// 이름 유형(한자/순우리말)은 입력 방식(자연어/조건입력)보다 상위 개념이다 — 파이프라인이
+// 두 유형을 완전히 다른 규칙(오행·획수 사용 여부)으로 처리하므로, 최상위 탭으로 먼저
+// 고르게 하고 그 안에서 입력 방식을 고르도록 한다. 두 폼 컴포넌트는 그대로 재사용하고
+// nameType을 prop으로 내려보내 필드 표시·제출 페이로드만 갈라지게 한다.
 
 export function InputScreen({ onSubmit }: { onSubmit: (request: NameRequest) => void }) {
+  const [nameType, setNameType] = useState<NameType>("hanja");
   const [mode, setMode] = useState<InputMode>("natural");
 
   return (
@@ -30,6 +36,27 @@ export function InputScreen({ onSubmit }: { onSubmit: (request: NameRequest) => 
 
             {/* Right Column: Unified Capsule Card Container (Occupies 7 columns on desktop) */}
             <div className="lg:col-span-7">
+              {/* 이름 유형 탭 (1단계) — 한자/순우리말 선택에 따라 아래 카드의 필드·요청이 달라진다 */}
+              <Tabs value={nameType} onValueChange={(v) => setNameType(v as NameType)}>
+                <TabsList
+                  className="flex p-1 bg-hanji border border-border rounded-xl mb-3 w-fit"
+                  aria-label="이름 유형"
+                >
+                  <TabsTrigger
+                    value="hanja"
+                    className="px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-border-warm data-[state=active]:shadow-[0_2px_8px_rgba(46,30,8,0.03)] data-[state=inactive]:text-caption data-[state=inactive]:hover:text-foreground"
+                  >
+                    한자 이름
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="korean"
+                    className="px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:border data-[state=active]:border-border-warm data-[state=active]:shadow-[0_2px_8px_rgba(46,30,8,0.03)] data-[state=inactive]:text-caption data-[state=inactive]:hover:text-foreground"
+                  >
+                    순우리말 이름
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
               <div className="bg-white/95 backdrop-blur-md border border-border-warm rounded-3xl p-5 sm:p-7 shadow-[0_20px_45px_rgba(46,30,8,0.04)] relative">
                 <Tabs value={mode} onValueChange={(v) => setMode(v as InputMode)}>
                   {/* Mode tabs (Capsule Pills) */}
@@ -62,7 +89,7 @@ export function InputScreen({ onSubmit }: { onSubmit: (request: NameRequest) => 
                       className="col-start-1 row-start-1"
                       {...(mode !== "natural" ? { inert: "" } : {})}
                     >
-                      <NaturalInputForm active={mode === "natural"} onSubmit={onSubmit} />
+                      <NaturalInputForm active={mode === "natural"} nameType={nameType} onSubmit={onSubmit} />
                     </TabsContent>
 
                     <TabsContent
@@ -71,7 +98,7 @@ export function InputScreen({ onSubmit }: { onSubmit: (request: NameRequest) => 
                       className="col-start-1 row-start-1"
                       {...(mode !== "structured" ? { inert: "" } : {})}
                     >
-                      <StructuredInputForm active={mode === "structured"} onSubmit={onSubmit} />
+                      <StructuredInputForm active={mode === "structured"} nameType={nameType} onSubmit={onSubmit} />
                     </TabsContent>
                   </div>
                 </Tabs>

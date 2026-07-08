@@ -37,7 +37,7 @@ from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 import rag_server
-from naming_graph import build_graph, _resolve_surname, _SURNAME_OHAENG
+from naming_graph import build_graph, _resolve_surname, _SURNAME_OHAENG, _KOREAN_NAME_KW
 
 app = FastAPI(title="작명 QA API")
 _graph = None
@@ -143,13 +143,17 @@ class NameResultList(BaseModel):
 _STRUCTURE_PROMPT = """당신은 아래 '완성된 추천 결과'를 정해진 JSON 스키마로 그대로 옮겨 담는 역할입니다.
 '완성된 추천 결과'는 이미 검증·후처리(수리 재계산, 부적절 한자 교체, 중복 제거 등)를 마친 최종본입니다.
 새로운 이름·한자·수리·오행 정보를 만들어내지 마세요 — 스키마 변환일 뿐, 내용을 다시 창작하는 단계가 아닙니다.
+결과 개수와 순서는 '완성된 추천 결과'의 "## [이름 N]" 헤더 개수·순서와 정확히 일치해야 합니다.
+헤더에 없는 이름(한자든 순우리말이든)을 새로 지어내 추가하는 것은 절대 금지입니다.
 
 각 이름마다 다음을 채우세요:
 - lastName: 성씨 한자 1글자의 char/reading(독음)/meaning(뜻)/strokes(획수)/element(오행)
-- hanja: 이름(성씨 제외) 한자, hangul: 이름의 한글
-- ruby: 이름 각 글자의 char/reading/meaning/strokes/element 배열
-- sukgyeok: 수리(획수) 판단 한 줄 요약 — '완성된 추천 결과'의 수리 문장을 그대로 사용
-- sukgyeokDetail: 원격/형격/이격/정격 4격의 name/value(획수 합)/fortune(길흉) 배열 — '완성된 추천 결과'에 표기된 숫자를 그대로 사용, 없으면 빈 배열
+- hanja: 이름(성씨 제외) 한자. 순우리말 이름(한자가 없는 이름)이면 빈 문자열("")로 둘 것 — 한글 음절을 이 필드에 넣지 마세요.
+- hangul: 이름의 한글
+- ruby: 이름 각 글자의 char/reading/meaning/strokes/element 배열. 순우리말 이름이면 빈 배열([])로 둘 것 —
+  한자가 없는데 음절을 char로, 임의 숫자를 strokes로 채워 넣지 마세요.
+- sukgyeok: 한자 이름은 수리(획수) 판단 한 줄 요약, 순우리말 이름은 뜻풀이 문장 — '완성된 추천 결과'에 있는 문장을 그대로 사용
+- sukgyeokDetail: 원격/형격/이격/정격 4격의 name/value(획수 합)/fortune(길흉) 배열 — '완성된 추천 결과'에 표기된 숫자를 그대로 사용, 없으면(순우리말 포함) 빈 배열
 - sources: 아래 '참고 자료'에서 이 이름과 관련된 출처 유형(hanja/suri/beopryeong/nonmun)과 라벨을 찾아 채움, 못 찾으면 빈 배열
 
 '완성된 추천 결과'에 나온 이름만 그대로 스키마로 변환하세요 — 이름을 추가하거나 빼지 마세요. id는 1부터 순번을 매깁니다."""
@@ -188,20 +192,36 @@ def _inject_default_surname_hanja(query: str) -> str:
     return query[:m.end()] + f"({hanja})" + query[m.end():]
 
 
+def _inject_korean_name_type_hint(query: str, name_type: str) -> str:
+    """nameType이 'korean'인데도 쿼리에 순우리말 관련 단어가 전혀 없으면 힌트를 덧붙인다.
+    naming_graph의 이름 유형 미지정 시 기본값은 한자 이름이므로, 프론트에서 순우리말
+    탭을 선택했다면 사용자가 굳이 "순우리말"이라 쓰지 않아도 그쪽으로 확실히 가야 한다."""
+    if name_type != "korean" or any(kw in query for kw in _KOREAN_NAME_KW):
+        return query
+    return f"{query} (순우리말 이름으로 추천해줘)"
+
+
 def _build_structured_query(req: dict) -> str:
+    name_type = req.get("nameType", "hanja")
+
     if req.get("type") == "natural":
-        return _inject_default_surname_hanja(req.get("query", ""))
+        query = _inject_default_surname_hanja(req.get("query", ""))
+        return _inject_korean_name_type_hint(query, name_type)
 
     last = req.get("lastName", "")
     default_hanja = _DEFAULT_SURNAME_HANJA.get(last)
     parts = [f"{last}씨({default_hanja}) 성" if default_hanja else f"{last}씨 성"]
     if req.get("gender"):
         parts.append(f"{req['gender']} 아이")
-    if req.get("elements"):
+    if name_type == "korean":
+        # 순우리말은 오행·획수 개념을 쓰지 않는다 (naming_graph의 순우리말 전용 프롬프트가
+        # 오행·획수·한자 언급을 금지) — 프론트도 이 필드들을 안 보내지만 방어적으로 한 번 더 배제.
+        parts.append("순우리말")
+    elif req.get("elements"):
         # "木오행"처럼 붙여 써야 파이프라인 오행 파서가 인식한다.
         # 파서는 첫 매칭만 사용하므로 다중 선택 시 첫 항목이 우선 반영된다.
         parts.append(" ".join(f"{el}오행" for el in req["elements"]))
-    if req.get("strokeRange"):
+    if name_type != "korean" and req.get("strokeRange"):
         parts.append(f"획수 {req['strokeRange']}")
     if req.get("meaning"):
         parts.append(f"{req['meaning']} 의미")
@@ -264,6 +284,10 @@ def _correct_results_from_db(results: list[NameResult], query: str) -> list[Name
                 cb.meaning = meta["sound_meaning"]
         if r.ruby and all(cb.reading for cb in r.ruby):
             r.hangul = "".join(cb.reading for cb in r.ruby)
+        elif not r.ruby and surname_kr and r.hangul.startswith(surname_kr) and len(r.hangul) > len(surname_kr):
+            # 순우리말 결과(ruby 없음)는 위 재조립이 적용되지 않는다 — 구조화 LLM이 hangul
+            # 필드에 성씨 발음을 중복 삽입하는 경우가 있어(예: "임소하" -> "임임소하") 잘라낸다.
+            r.hangul = r.hangul[len(surname_kr):]
     return results
 
 

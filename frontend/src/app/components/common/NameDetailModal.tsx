@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Printer } from "lucide-react";
 import type { NameResult, SourceType } from "@/app/types";
 import { SourceChip } from "@/app/components/common/SourceChip";
-import { GhostButton, PrimaryButton } from "@/app/components/common/Button";
+import { GhostButton } from "@/app/components/common/Button";
 
 /** 근거 출처 유형별 설명 문구 */
 const SOURCE_DESCRIPTIONS: Record<SourceType, string> = {
@@ -17,7 +17,15 @@ interface NameDetailModalProps {
   onClose: () => void;
 }
 
+/** 이름(성씨 제외) 한자 필드에 실제 한자(CJK 표의문자)가 하나도 없으면 순우리말 결과로 본다.
+ * ruby 배열 길이만으로는 판별할 수 없다 — 순우리말 결과에도 구조화 단계가 음절 자리표시자를
+ * ruby에 채워 보내는 경우가 있어(획수 0, 오행 빈 값), 실제 문자 종류로 판별해야 정확하다. */
+function isKoreanNameResult(result: NameResult): boolean {
+  return !/[一-鿿]/.test(result.hanja);
+}
+
 export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
+  const isKoreanResult = isKoreanNameResult(result);
   const fullHanja = result.lastName.char + result.ruby.map((c) => c.char).join("");
   const fullHangul = result.lastName.reading + result.hangul;
 
@@ -38,7 +46,7 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
         id="mg-certificate"
         role="dialog"
         aria-modal="true"
-        aria-label={`${fullHanja} ${fullHangul} 상세 정보`}
+        aria-label={`${isKoreanResult ? fullHangul : `${fullHanja} ${fullHangul}`} 상세 정보`}
         onClick={(e) => e.stopPropagation()}
         className="bg-white border border-border-warm rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-[0_32px_80px_rgba(26,14,4,0.25)] relative print:max-h-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
         style={{ animation: "mg-fadein 0.25s ease forwards" }}
@@ -57,19 +65,29 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
             <p className="text-[10px] font-bold tracking-[0.24em] text-gold-text uppercase mb-3">
               Myeongga Report · 추천 이름 상세
             </p>
-            <div
-              className="font-hanja text-5xl sm:text-6xl font-light text-foreground tracking-[0.06em] mb-2"
-              lang="ko-Hani"
-            >
-              {fullHanja}
-            </div>
-            <div className="flex items-baseline gap-2.5">
-              <span className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide">
+            {isKoreanResult ? (
+              <div className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide mb-2">
                 {fullHangul}
-              </span>
-              <span className="text-sm font-semibold text-primary">
-                81수리 4격 · {result.sukgyeok}
-              </span>
+              </div>
+            ) : (
+              <div
+                className="font-hanja text-5xl sm:text-6xl font-light text-foreground tracking-[0.06em] mb-2"
+                lang="ko-Hani"
+              >
+                {fullHanja}
+              </div>
+            )}
+            <div className="flex items-baseline gap-2.5">
+              {isKoreanResult ? null : (
+                <>
+                  <span className="text-xl sm:text-2xl font-semibold text-secondary-foreground tracking-wide">
+                    {fullHangul}
+                  </span>
+                  <span className="text-sm font-semibold text-primary">
+                    81수리 4격 · {result.sukgyeok}
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <button
@@ -85,13 +103,13 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
 
         {/* Body — 데스크톱 2열: 한자 풀이 | 81수리 + 출처 */}
         <div className="px-6 sm:px-10 py-7 grid gap-8 lg:grid-cols-2 lg:gap-10">
-          {/* 한자 풀이 (성 포함) */}
+          {/* 한자 풀이 (성 포함) — 순우리말은 이름 부분에 한자가 없어 성씨만 나온다 */}
           <section>
             <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
-              한자 풀이
+              {isKoreanResult ? "성씨 한자" : "한자 풀이"}
             </p>
             <div className="flex flex-col gap-3">
-              {[result.lastName, ...result.ruby].map((c, i) => (
+              {(isKoreanResult ? [result.lastName] : [result.lastName, ...result.ruby]).map((c, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-4 border border-border-warm/70 rounded-2xl px-4 py-3.5 bg-hanji/40"
@@ -119,36 +137,53 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
                 </div>
               ))}
             </div>
+            {isKoreanResult && (
+              <p className="text-xs text-caption break-keep leading-relaxed mt-3">
+                이름 부분은 순우리말이라 한자·오행·획수를 사용하지 않습니다.
+              </p>
+            )}
           </section>
 
           <div className="space-y-8">
-            {/* 81수리 4격 상세 */}
-            <section>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
-                81수리 4격 상세
-              </p>
-              <div className="border border-border-warm/70 rounded-2xl divide-y divide-hanji overflow-hidden bg-white">
-                {result.sukgyeokDetail.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-label">{d.name}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-semibold text-foreground tabular-nums">
-                        {d.value}수
-                      </span>
-                      <span
-                        className={`text-xs font-medium px-2.5 py-0.5 rounded border ${
-                          d.fortune === "대길"
-                            ? "text-primary border-border-warm bg-hanji"
-                            : "text-ink border-border bg-muted"
-                        }`}
-                      >
-                        {d.fortune}
-                      </span>
+            {isKoreanResult ? (
+              /* 이름 풀이 — 순우리말은 획수·오행 4격 대신 뜻풀이 문장으로 근거를 제공한다 */
+              <section>
+                <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
+                  이름 풀이
+                </p>
+                <div className="border border-border-warm/70 rounded-2xl bg-hanji/40 px-4 py-3.5">
+                  <p className="text-sm text-ink break-keep leading-relaxed">{result.sukgyeok}</p>
+                </div>
+              </section>
+            ) : (
+              /* 81수리 4격 상세 */
+              <section>
+                <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-4">
+                  81수리 4격 상세
+                </p>
+                <div className="border border-border-warm/70 rounded-2xl divide-y divide-hanji overflow-hidden bg-white">
+                  {result.sukgyeokDetail.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-label">{d.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-base font-semibold text-foreground tabular-nums">
+                          {d.value}수
+                        </span>
+                        <span
+                          className={`text-xs font-medium px-2.5 py-0.5 rounded border ${
+                            d.fortune === "대길"
+                              ? "text-primary border-border-warm bg-hanji"
+                              : "text-ink border-border bg-muted"
+                          }`}
+                        >
+                          {d.fortune}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* 참고 출처 */}
             <section>
@@ -193,9 +228,6 @@ export function NameDetailModal({ result, onClose }: NameDetailModalProps) {
             <GhostButton onClick={onClose} className="px-5 py-2.5 text-xs rounded-lg">
               닫기
             </GhostButton>
-            <PrimaryButton onClick={onClose} className="px-5 py-2.5 text-xs">
-              확인했습니다
-            </PrimaryButton>
           </div>
         </div>
       </div>

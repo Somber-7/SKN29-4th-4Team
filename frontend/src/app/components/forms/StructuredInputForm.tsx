@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PrimaryButton } from "@/app/components/common/Button";
-import type { NameRequest } from "@/app/types";
+import type { NameRequest, NameType } from "@/app/types";
 
 /** 오행 토글 버튼 — 표시 라벨은 기존 InputScreen과 동일한 "한글(한자)" 순서 */
 const ELEMENT_OPTIONS: { hanja: string; label: string }[] = [
@@ -14,12 +14,16 @@ const ELEMENT_OPTIONS: { hanja: string; label: string }[] = [
 /** 상세 조건(성씨·성별·오행·획수·뜻)을 항목별로 입력하는 폼 — 상태를 내부로 캡슐화하고 NameRequest만 상위로 전달한다 */
 export function StructuredInputForm({
   active,
+  nameType,
   onSubmit,
 }: {
   /** 현재 탭이 활성 상태인지 — 비활성화될 때 에러 표시를 초기화한다 (기존 switchMode 동작과 동일) */
   active: boolean;
+  /** 상위(InputScreen)의 이름 유형 탭 선택 — 순우리말은 오행·획수 필드를 사용하지 않는다 */
+  nameType: NameType;
   onSubmit: (request: NameRequest) => void;
 }) {
+  const isHanja = nameType === "hanja";
   const [lastName, setLastName] = useState("");
   const [gender, setGender] = useState<"" | "남자" | "여자">("");
   const [elements, setElements] = useState<string[]>([]);
@@ -45,10 +49,11 @@ export function StructuredInputForm({
     setLastNameError("");
     onSubmit({
       type: "structured",
+      nameType,
       lastName: lastName.trim(),
       gender: gender || undefined,
-      elements: elements.length > 0 ? elements : undefined,
-      strokeRange: strokeRange || undefined,
+      elements: isHanja && elements.length > 0 ? elements : undefined,
+      strokeRange: isHanja && strokeRange ? strokeRange : undefined,
       meaning: meaning || undefined,
     });
   };
@@ -114,46 +119,52 @@ export function StructuredInputForm({
         </div>
       </div>
 
-      {/* Five elements multi-select */}
-      <div>
-        <label className="block text-xs font-semibold text-foreground mb-1.5">오행 선호</label>
-        <div className="flex flex-wrap gap-2">
-          {ELEMENT_OPTIONS.map((el) => (
-            <button
-              key={el.hanja}
-              onClick={() => toggleElement(el.hanja)}
-              aria-pressed={elements.includes(el.hanja)}
-              className={`font-hanja px-3.5 py-2 text-xs font-semibold border rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer ${
-                elements.includes(el.hanja)
-                  ? "bg-primary text-white border-primary shadow-sm hover:opacity-95"
-                  : "border-border-warm text-ink bg-white hover:border-gold-border hover:text-gold-text"
-              }`}
-            >
-              {el.label}
-            </button>
-          ))}
+      {/* Five elements multi-select — 한자 이름 전용 (순우리말은 오행을 사용하지 않음) */}
+      {isHanja && (
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5">오행 선호</label>
+          <div className="flex flex-wrap gap-2">
+            {ELEMENT_OPTIONS.map((el) => (
+              <button
+                key={el.hanja}
+                onClick={() => toggleElement(el.hanja)}
+                aria-pressed={elements.includes(el.hanja)}
+                className={`font-hanja px-3.5 py-2 text-xs font-semibold border rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer ${
+                  elements.includes(el.hanja)
+                    ? "bg-primary text-white border-primary shadow-sm hover:opacity-95"
+                    : "border-border-warm text-ink bg-white hover:border-gold-border hover:text-gold-text"
+                }`}
+              >
+                {el.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Stroke range + meaning */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Stroke range(한자 전용) + meaning(공통) */}
+      <div className={isHanja ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : ""}>
+        {isHanja && (
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">획수 범위</label>
+            <input
+              type="text"
+              value={strokeRange}
+              onChange={(e) => setStrokeRange(e.target.value)}
+              placeholder="예: 20~25"
+              className="w-full px-3.5 py-2 text-sm border border-border-warm bg-white rounded-xl focus:outline-none focus:ring-4 focus:ring-gold-border/10 focus:border-gold-border transition-all"
+            />
+          </div>
+        )}
         <div>
-          <label className="block text-xs font-semibold text-foreground mb-1.5">획수 범위</label>
-          <input
-            type="text"
-            value={strokeRange}
-            onChange={(e) => setStrokeRange(e.target.value)}
-            placeholder="예: 20~25"
-            className="w-full px-3.5 py-2 text-sm border border-border-warm bg-white rounded-xl focus:outline-none focus:ring-4 focus:ring-gold-border/10 focus:border-gold-border transition-all"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-foreground mb-1.5">뜻/의미 키워드</label>
+          <label className="block text-xs font-semibold text-foreground mb-1.5">
+            {isHanja ? "뜻/의미 키워드" : "뜻/느낌 키워드"}
+          </label>
           <input
             type="text"
             value={meaning}
             onChange={(e) => setMeaning(e.target.value)}
-            placeholder="예: 지혜, 빛, 강건함"
+            placeholder={isHanja ? "예: 지혜, 빛, 강건함" : "예: 맑음, 씩씩함, 봄"}
             className="w-full px-3.5 py-2 text-sm border border-border-warm bg-white rounded-xl focus:outline-none focus:ring-4 focus:ring-gold-border/10 focus:border-gold-border transition-all"
           />
         </div>

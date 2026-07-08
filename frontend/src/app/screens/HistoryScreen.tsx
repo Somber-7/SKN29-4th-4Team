@@ -152,7 +152,7 @@ export function HistoryScreen({
                   </div>
 
                   <GhostButton
-                    onClick={() => onOpenResult({ type: "natural", query: entry.query })}
+                    onClick={() => onOpenResult({ type: "natural", nameType: "hanja", query: entry.query })}
                     className="px-4 py-2.5 text-xs flex-shrink-0 w-full sm:w-auto"
                   >
                     결과 다시 보기

@@ -75,7 +75,7 @@ const AdminSettingsScreen = lazy(() =>
 );
 
 /** results 화면에 request가 아직 없을 때(예: 직접 진입 등 비정상 경로) 쓰는 기본값 — 기존 App.tsx와 동일 */
-const EMPTY_NATURAL_REQUEST: NameRequest = { type: "natural", query: "" };
+const EMPTY_NATURAL_REQUEST: NameRequest = { type: "natural", nameType: "hanja", query: "" };
 
 /** 라우트 전환 중 잠깐 보이는 자리표시자 — 테마 배경만 유지해 깜빡임을 최소화 */
 function RouteFallback() {
@@ -192,7 +192,7 @@ function NotFoundRoute() {
 // 다른 화면에서 다시 진입해도 같은 세션에서 이미 봤다면 다시 보여주지 않는다(sessionStorage).
 
 function RootLayout() {
-  const { flow, request, chatQuestion, completeProcessing, cancelProcessing, openChat, backToResults, retryFromResults, regenerateWithExclusions } =
+  const { flow, request, chatQuestion, completeProcessing, cancelProcessing, backToResults, retryFromResults, regenerateWithExclusions } =
     useNamingFlow();
   const { isLoggedIn, isAdmin } = useAuth();
   const onNavigate = useScreenNav();
@@ -247,7 +247,6 @@ function RootLayout() {
           {flow === "results" && (
             <ResultsScreen
               request={request ?? EMPTY_NATURAL_REQUEST}
-              onChat={openChat}
               onRetry={retryFromResults}
               onRegenerate={regenerateWithExclusions}
             />
