@@ -27,3 +27,9 @@ data/chroma/
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+
+# Codex local guidance/worklogs
+AGENTS.md
+code_review.md
+docs/work_logs/
+

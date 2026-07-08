@@ -1,5 +1,5 @@
 // ─── API 클라이언트 (fetch 래퍼) ───────────────────────────────────────────────
-// - Django(세션 인증·마이페이지·이력·관리자)는 API_BASE("/api")
+// - Django(세션 인증·마이페이지·이력·인사이트·관리자)는 API_BASE("/api")
 // - FastAPI+Neo4j(작명 생성·채팅)는 NAMING_API_BASE("/naming-api")
 // 로컬/배포 모두 nginx 또는 vite proxy가 각 백엔드로 전달한다.
 
@@ -50,6 +50,21 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+async function ensureCsrfToken(baseUrl: string, method?: string): Promise<string | null> {
+  const unsafe = method && !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method.toUpperCase());
+  if (!unsafe || baseUrl !== API_BASE) return getCookie("csrftoken");
+
+  const existing = getCookie("csrftoken");
+  if (existing) return existing;
+
+  await fetch(`${API_BASE}/auth/csrf`, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  return getCookie("csrftoken");
+}
+
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
 }
@@ -63,7 +78,7 @@ function createClient(baseUrl: string) {
     const timeoutMs = baseUrl === NAMING_API_BASE ? 90_000 : 15_000;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const csrfToken = getCookie("csrftoken");
+    const csrfToken = await ensureCsrfToken(baseUrl, rest.method);
 
     let res: Response;
     try {

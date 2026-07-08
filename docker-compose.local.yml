@@ -30,6 +30,9 @@ services:
       - postgres-local
     volumes:
       - static_volume:/app/static
+      # 로컬 전용 소스 마운트 — makemigrations 등으로 컨테이너 안에서 만든 파일이
+      # 호스트(webapp/)에 그대로 남게 한다(운영 docker-compose.4th.yml에는 없음).
+      - ./webapp:/app
     expose:
       - "8000"
 

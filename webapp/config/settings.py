@@ -42,6 +42,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://myeongga.site',
 ]
 SESSION_COOKIE_SAMESITE = 'Lax'
+# 관리자 전용 세션 쿠키(admin_sessionid, naming.middleware.AdminSessionMiddleware)의
+# Secure 플래그. 로컬(DEBUG=true, http)에서는 꺼야 쿠키가 저장되고, 운영(DEBUG=false,
+# nginx가 https 종단)에서는 켜진다(§15.1).
+ADMIN_SESSION_COOKIE_SECURE = not DEBUG
 
 
 # Application definition
@@ -58,10 +62,11 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'naming.middleware.AdminSessionMiddleware',  # SessionMiddleware 대체 — 관리자 세션 쿠키 격리(§15.1)
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'naming.middleware.ActiveUserMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

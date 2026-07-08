@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Screen } from "@/app/types";
+import { useNamingFlow } from "@/app/providers/NamingFlowProvider";
 
 /**
  * 기존 화면 컴포넌트들이 그대로 사용하는 Screen 기반 onNavigate(s: Screen) 시그니처를
@@ -20,33 +21,37 @@ const SCREEN_PATHS: Partial<Record<Screen, string>> = {
   login: "/login",
   signup: "/signup",
   insights: "/insights",
+  notices: "/notices",
   faq: "/faq",
   contact: "/contact",
   history: "/history",
   mypage: "/mypage",
   terms: "/terms",
   privacy: "/privacy",
-  adminDashboard: "/adminDashboard",
-  adminContent: "/adminContent",
-  adminUsers: "/adminUsers",
-  adminSettings: "/adminSettings",
+  // 관리자 화면(adminDashboard 등)은 별도 번들(/manage/)에만 존재 — 이 맵에 없다.
 };
 
 export function useScreenNav(): (s: Screen) => void {
   const navigate = useNavigate();
+  const { exitFlow } = useNamingFlow();
 
   return useCallback(
     (s: Screen) => {
       // gate는 더 이상 플로우 오버레이가 아니라 RootLayout의 세션당 1회 자동 노출이므로,
       // "작명 시작하기" 클릭은 곧바로 input 라우트로 보낸다.
       if (s === "gate") {
+        exitFlow();
         navigate("/input");
         return;
       }
       // processing/results/chat은 onNavigate로 직접 진입하지 않는다(항상 플로우 내부 콜백으로만 전환).
       if (s === "processing" || s === "results" || s === "chat") return;
+      // processing/results/chat 오버레이가 떠 있는 동안 GNB 등에서 실제 라우트로 이동하는 경우,
+      // 오버레이를 먼저 닫아야 RootLayout이 <Outlet/>(새 라우트)을 렌더링한다. 이게 없으면
+      // 주소는 바뀌어도 화면은 계속 오버레이(예: 결과 화면)에 머물러 있는 것처럼 보인다.
+      exitFlow();
       navigate(SCREEN_PATHS[s] ?? "/");
     },
-    [navigate],
+    [navigate, exitFlow],
   );
 }

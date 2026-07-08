@@ -36,6 +36,20 @@
     />
 
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
+
+    <!--
+      구 HashRouter 하위호환: BrowserRouter 전환 전에는 '/#/faq' 같은 링크가 돌아다녔다.
+      React/라우터가 뜨기 전에 동기적으로 실행해 '/#/faq' → '/faq'로 주소를 정리한다.
+      (이미 즐겨찾기·공유된 링크가 있을 수 있어 서버 리다이렉트 없이도 동작하게 한다.)
+    -->
+    <script>
+      (function () {
+        if (window.location.hash.indexOf('#/') === 0) {
+          var newPath = window.location.hash.slice(1) || '/';
+          window.history.replaceState(null, '', newPath + window.location.search);
+        }
+      })();
+    </script>
   </head>
 
   <body>
