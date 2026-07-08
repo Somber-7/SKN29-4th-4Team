@@ -463,6 +463,9 @@ def list_notices(request, status: str | None = None, q: str | None = None):
 
 @notices_router.post("/", response={201: NoticeDetailOut}, auth=require_role(AdminProfile.Role.ADMIN))
 def create_notice(request, payload: NoticeCreateIn):
+    if payload.isPinned:
+        Notice.objects.update(is_pinned=False)
+        
     notice = Notice.objects.create(
         title=payload.title,
         body=payload.body,
@@ -491,6 +494,8 @@ def update_notice(request, notice_id: int, payload: NoticeUpdateIn):
     if payload.status is not None:
         notice.status = payload.status
     if payload.isPinned is not None:
+        if payload.isPinned:
+            Notice.objects.exclude(pk=notice_id).update(is_pinned=False)
         notice.is_pinned = payload.isPinned
     if payload.startAt is not None:
         notice.start_at = payload.startAt

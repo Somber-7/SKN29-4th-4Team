@@ -259,26 +259,38 @@ export function AdminSettingsScreen() {
           <Reveal>
             <section className="bg-white border border-border p-5 sm:p-6">
               <h2 className="text-sm font-medium text-foreground mb-4">점검 모드</h2>
-              <SettingRow
-                label="점검 모드 활성화"
-                description="활성화하면 사용자에게 점검 안내 화면이 표시됩니다."
-                checked={localMaintenance}
-                onChange={(v) => canManage && setLocalMaintenance(v)}
-              />
-              
-              <div className="mt-4">
-                <label htmlFor="mt-reason" className="block text-xs font-medium text-label mb-1.5">
-                  점검 사유 (선택)
-                </label>
-                <textarea
-                  id="mt-reason"
-                  value={localReason}
-                  onChange={(e) => setLocalReason(e.target.value)}
-                  disabled={!canManage}
-                  placeholder="예) 서버 정기 점검으로 인해 서비스 이용이 제한됩니다."
-                  className="w-full px-3 py-2.5 text-sm border border-border bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-50 h-24 resize-none"
-                />
+              <div className="flex items-center justify-between gap-4 py-4 border-b border-muted">
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground font-medium">점검 모드 활성화</p>
+                  <p className="text-xs text-caption break-keep mt-0.5">활성화하면 사용자에게 점검 안내 화면이 표시됩니다.</p>
+                </div>
+                <button
+                  onClick={() => canManage && setLocalMaintenance(!localMaintenance)}
+                  className={`flex items-center justify-center w-16 h-8 rounded-full font-bold text-xs transition-colors duration-200 ${
+                    localMaintenance 
+                      ? "bg-primary text-white" 
+                      : "bg-muted text-caption hover:bg-muted/80"
+                  } ${!canManage && "opacity-50 cursor-not-allowed"}`}
+                >
+                  {localMaintenance ? "ON" : "OFF"}
+                </button>
               </div>
+              
+              {localMaintenance && (
+                <div className="mt-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label htmlFor="mt-reason" className="block text-xs font-medium text-label mb-1.5">
+                    점검 사유 (선택)
+                  </label>
+                  <textarea
+                    id="mt-reason"
+                    value={localReason}
+                    onChange={(e) => setLocalReason(e.target.value)}
+                    disabled={!canManage}
+                    placeholder="예) 서버 정기 점검으로 인해 서비스 이용이 제한됩니다."
+                    className="w-full px-3 py-2.5 text-sm border border-border bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-50 h-24 resize-none"
+                  />
+                </div>
+              )}
 
               {localMaintenance && (
                 <div
