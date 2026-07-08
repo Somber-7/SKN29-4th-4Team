@@ -46,13 +46,20 @@ export interface AuthUser {
 // TODO(API): POST /naming-api/names/generate 의 body 계약. 자연어/상세조건 두 모드를
 // discriminated union으로 구분한다. 자연어 파싱(NLU)은 백엔드의 역할이며,
 // nameQueryParser.parseNameQuery는 입력 미리보기 칩 용도로만 프론트에 남아있다.
+
+/** 이름 유형 — 한자 이름과 순우리말 이름은 파이프라인에서 완전히 다른 규칙(오행·획수 사용 여부)으로 처리된다 */
+export type NameType = "hanja" | "korean";
+
 export type NameRequest =
-  | { type: "natural"; query: string; excludeNames?: string[] }
+  | { type: "natural"; nameType: NameType; query: string; excludeNames?: string[] }
   | {
       type: "structured";
+      nameType: NameType;
       lastName: string;
       gender?: "남자" | "여자";
+      /** 오행 선호 — 한자(hanja) 이름 전용, 순우리말은 사용하지 않음 */
       elements?: string[];
+      /** 획수 범위 — 한자(hanja) 이름 전용, 순우리말은 사용하지 않음 */
       strokeRange?: string;
       meaning?: string;
       /** 재생성 시 제외할 기존 추천 이름(hangul) — 백엔드가 동일 이름 재추천을 방지 */

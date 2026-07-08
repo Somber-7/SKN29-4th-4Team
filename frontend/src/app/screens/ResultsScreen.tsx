@@ -7,7 +7,7 @@ import { formatNameRequest } from "@/app/utils/formatNameRequest";
 import { ParsedChipRow } from "@/app/components/common/ParsedChips";
 import { NameCard } from "@/app/components/common/NameCard";
 import { NameDetailModal } from "@/app/components/common/NameDetailModal";
-import { PrimaryButton, GhostButton } from "@/app/components/common/Button";
+import { GhostButton } from "@/app/components/common/Button";
 import { Footer } from "@/app/components/layout/Footer";
 import type { NameRequest, NameResult } from "@/app/types";
 
@@ -33,12 +33,10 @@ function SkeletonCard() {
 
 export function ResultsScreen({
   request,
-  onChat,
   onRetry,
   onRegenerate,
 }: {
   request: NameRequest;
-  onChat: (question?: string) => void;
   /** "조건 수정" — 입력 화면으로 복귀 */
   onRetry: () => void;
   /** "다시 추천" — 같은 조건 + 현재 결과 이름 제외(excludeNames)로 재생성 */
@@ -47,7 +45,6 @@ export function ResultsScreen({
   const [streaming, setStreaming] = useState(true);
   const [visibleCount, setVisibleCount] = useState(0);
   const [saved, setSaved] = useState<Set<number>>(new Set());
-  const [followUp, setFollowUp] = useState("");
   const [selectedResult, setSelectedResult] = useState<NameResult | null>(null);
 
   const parsed = useMemo(() => nameRequestToParsedQuery(request), [request]);
@@ -56,8 +53,6 @@ export function ResultsScreen({
 
   // TODO(API): 서버가 성씨 반영 결과를 주면 훅 내부의 치환 로직 제거 (POST /naming-api/names/generate)
   const { data: results = [] } = useNameResults(request);
-
-  const submitFollowUp = () => onChat(followUp.trim() || undefined);
 
   useEffect(() => {
     const t = setTimeout(() => setStreaming(false), STREAMING_DURATION_MS);
@@ -85,8 +80,6 @@ export function ResultsScreen({
       else next.add(id);
       return next;
     });
-
-  const allRevealed = !streaming && visibleCount >= results.length;
 
   return (
     <div className="pt-16 min-h-screen bg-hanji/40 flex flex-col">
@@ -160,9 +153,6 @@ export function ResultsScreen({
               >
                 다시 추천
               </GhostButton>
-              <PrimaryButton onClick={() => onChat()} className="px-4 py-2 text-xs">
-                추가 질문하기
-              </PrimaryButton>
             </div>
           )}
         </div>
@@ -204,36 +194,6 @@ export function ResultsScreen({
             />
           ))}
         </div>
-
-        {/* Follow-up entry */}
-        {allRevealed && (
-          <div
-            className="bg-white border border-border-warm rounded-2xl p-5 sm:p-6 shadow-[0_8px_24px_rgba(46,30,8,0.03)] mb-3"
-            style={{ animation: "mg-fadein 0.35s ease forwards" }}
-          >
-            <p className="text-[10px] font-bold text-caption uppercase tracking-wider mb-1">
-              추가 질문
-            </p>
-            <p className="text-xs text-ink break-keep mb-3">
-              추천 결과가 궁금하다면 근거와 함께 자세히 설명해 드립니다.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={followUp}
-                onChange={(e) => setFollowUp(e.target.value)}
-                placeholder="예: 도현이라는 이름에서 水 기운이 충분한가요?"
-                className="flex-1 px-3.5 py-2.5 text-sm border border-border-warm bg-hanji/40 focus:bg-white rounded-xl focus:outline-none focus:ring-4 focus:ring-gold-border/10 focus:border-gold-border transition-all"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitFollowUp();
-                }}
-              />
-              <PrimaryButton onClick={submitFollowUp} className="px-5 py-2 text-xs">
-                전송
-              </PrimaryButton>
-            </div>
-          </div>
-        )}
 
         <p className="text-center text-[11px] text-hint break-keep">
           추천 결과는 참고용 정보이며, 각 카드를 누르면 81수리 4격과 출처 근거를 확인할 수 있습니다.
