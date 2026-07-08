@@ -67,7 +67,7 @@ export function NaturalInputForm({
 
   return (
     <div
-      className={`col-start-1 row-start-1 flex flex-col h-full pt-3 transition-opacity duration-150 ${
+      className={`col-start-1 row-start-1 transition-opacity duration-150 ${
         active ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"
       }`}
     >
@@ -115,7 +115,7 @@ export function NaturalInputForm({
       </div>
 
       {/* Bottom Row: Prompt chips & Submit button placed side-by-side to save vertical height */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-auto pt-4 border-t border-border-warm/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 pt-4 border-t border-border-warm/40">
         <div className="flex flex-wrap gap-1.5 flex-1">
           {promptChips.map((chip, i) => (
             <button

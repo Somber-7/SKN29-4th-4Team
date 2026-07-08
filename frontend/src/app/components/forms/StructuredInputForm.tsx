@@ -60,7 +60,7 @@ export function StructuredInputForm({
 
   return (
     <div
-      className={`col-start-1 row-start-1 flex flex-col h-full space-y-6 pt-3 text-left transition-opacity duration-150 ${
+      className={`col-start-1 row-start-1 flex flex-col h-full space-y-4 text-left transition-opacity duration-150 ${
         active ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"
       }`}
     >

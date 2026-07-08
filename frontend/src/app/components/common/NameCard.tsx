@@ -34,17 +34,17 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
     return (
       <article
         className="w-full bg-white border border-border-warm rounded-2xl p-6 shadow-[0_12px_30px_rgba(46,30,8,0.04)] hover:shadow-[0_20px_45px_rgba(46,30,8,0.08)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-        style={{ backgroundImage: PAPER_NOISE_BG, backgroundColor: "white" }}
+        style={{ backgroundImage: PAPER_NOISE_BG }}
       >
-        {/* Card Header */}
-        <div className="border-b border-hanji pb-4 mb-4 text-left">
-          <span className="text-[8px] font-bold tracking-[0.2em] text-gold-text uppercase">Myeongga Report</span>
-          <h4 className="text-xs font-semibold text-foreground mt-0.5">명가작명소 추천 인증서</h4>
+        {/* Traditional Red Stamp Watermark */}
+        <div className="absolute top-5 right-5 w-12 h-12 rounded-full border border-red-500/20 flex items-center justify-center text-[9px] font-bold text-red-500/30 rotate-12 select-none pointer-events-none">
+          명가검증
         </div>
 
-        {/* Traditional Red Stamp Watermark */}
-        <div className="absolute top-3 right-3 w-12 h-12 rounded-full border border-red-500/20 flex items-center justify-center text-[9px] font-bold text-red-500/30 select-none pointer-events-none">
-          명가검증
+        {/* Card Header */}
+        <div className="border-b border-hanji pb-3 mb-4 text-left">
+          <span className="text-[8px] font-bold tracking-[0.2em] text-gold-text uppercase">Myeongga Report</span>
+          <h4 className="text-xs font-semibold text-foreground mt-0.5">명가작명소 추천 인증서</h4>
         </div>
 
         {/* The Name Block */}
