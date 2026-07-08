@@ -3,6 +3,8 @@ dist/
 *.local
 .DS_Store
 Thumbs.db
-.env
 .env.*
 !.env.example
+# frontend/.env는 의도적으로 추적한다 — VITE_* 값은 시크릿이 아니라 빌드 시 번들에
+# 노출되는 공개 UI 플래그이고, 배포 파이프라인이 EC2 git pull → docker build만 하므로
+# 커밋되어 있지 않으면 프로덕션 빌드에 반영될 수 없다. .env.local 등은 계속 무시한다.
