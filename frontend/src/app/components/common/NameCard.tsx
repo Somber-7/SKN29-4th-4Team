@@ -169,12 +169,13 @@ export function NameCard({ result, variant, rank, saved = false, onToggleSave, o
           제목·페이지를 그대로 박스로 나열하면 사용자에게 낯설고 카드 높이만 키우므로 목록에는
           싣지 않는다 — 친절한 문장 설명은 상세보기 모달의 "참고 출처" 섹션에서 제공한다. */}
       <div className="flex flex-col gap-2 min-w-0">
-        {/* 카드에서는 항상 한 줄 요약만 보여준다 — 전체 문장은 클릭 시 상세보기 모달에서 확인.
-            truncate(overflow-hidden + whitespace-nowrap + ellipsis)라 문장이 아무리 길어도
-            줄바꿈 자체가 일어나지 않아 옆 컬럼과 겹칠 여지가 구조적으로 없다. */}
+        {/* 4격 값이 한 줄에 다 들어가지 않으면(예: "원격23(대길)·형격16(길)·이격23(대길)·정격31(대길)")
+            truncate로 말줄임표 처리하면 마지막 격의 길흉을 못 읽어 가독성이 떨어진다. 이 컬럼은
+            독립된 grid 트랙(minmax(0,17rem))이라 줄바꿈해도 옆 컬럼과 겹치지 않으므로, 잘라내는
+            대신 break-keep으로 필요한 만큼 줄바꿈해 전체 내용을 보여준다. */}
         <div className="text-right min-w-0">
           <p className="text-[11px] text-caption">{isKoreanResult ? "이름 풀이" : "81수리 4격"}</p>
-          <p className="text-xs font-semibold text-primary truncate" title={result.sukgyeok}>
+          <p className="text-xs font-semibold text-primary break-keep">
             {result.sukgyeok}
           </p>
         </div>
