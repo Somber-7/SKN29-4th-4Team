@@ -811,7 +811,7 @@ def internal_rag_node(state: NamingState) -> NamingState:
             results.append(rag_server.search_rag(paper_query, col, n_results=10))
         elif col == "hanja_col" and is_name_query:
             count_match = re.search(r'(\d+)\s*개', query)
-            req_count = int(count_match.group(1)) if count_match else 3
+            req_count = int(count_match.group(1)) if count_match else 5
             n_results = min(max(50, req_count * 8), 80)
             # 성씨 오행이 확인되면 상생 체인 오행으로 분할 샘플링
             _, surname_info = _resolve_surname(query)
@@ -823,7 +823,7 @@ def internal_rag_node(state: NamingState) -> NamingState:
                 results.append(rag_server.sample_hanja(query, n_results=n_results))
         elif col == "urimalsam_col" and is_name_query:
             count_match = re.search(r'(\d+)\s*개', query)
-            req_count = int(count_match.group(1)) if count_match else 3
+            req_count = int(count_match.group(1)) if count_match else 5
             n_results = min(max(30, req_count * 6), 60)
             is_single_req = any(kw in query for kw in _SINGLE_KW)
             results.append(rag_server.sample_urimalsam(query, n_results=n_results, single_only=is_single_req))
@@ -2126,7 +2126,7 @@ def generate_node(state: NamingState) -> NamingState:
     context_with_surname = surname_context + gender_ctx + state["context"]
 
     _req_count_m = re.search(r'(\d+)\s*개', query)
-    req_count = int(_req_count_m.group(1)) if _req_count_m else 3
+    req_count = int(_req_count_m.group(1)) if _req_count_m else 5
     disclaimer = "\n\n---\n\n⚠️ 면책 고지: 추천 이름의 출생신고 가능 여부를 100% 보장하지 않습니다. 최종 확인은 관할 기관을 통해 진행하세요."
 
     # ── Constraint-first 경로 (한자 이름 전용, 2026-07-07) ──
