@@ -58,7 +58,7 @@ def _user_to_auth_user(user):
         "username": user.username,
         "email": user.email,
         "role": "admin" if user.is_staff else "user",
-        "joinedAt": user.date_joined.strftime("%Y.%m.%d"),
+        "joinedAt": timezone.localtime(user.date_joined).strftime("%Y.%m.%d"),
     }
 
 
@@ -260,7 +260,7 @@ def history_view(request):
             first = results[0] if results else None
             entries.append({
                 "id": item.id,
-                "date": item.created_at.strftime("%Y.%m.%d"),
+                "date": timezone.localtime(item.created_at).strftime("%Y.%m.%d"),
                 "query": item.query_text,
                 "resultCount": len(results),
                 "savedCount": 0,
@@ -312,7 +312,7 @@ def history_detail_view(request, history_id):
 
     return JsonResponse({
         "id": history.id,
-        "date": history.created_at.strftime("%Y.%m.%d"),
+        "date": timezone.localtime(history.created_at).strftime("%Y.%m.%d"),
         "query": history.query_text,
         "request": history.request_payload,
         "results": [r.to_dict() for r in history.result_set.all()],

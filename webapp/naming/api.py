@@ -752,7 +752,7 @@ def get_dashboard(request):
     for h in recent_histories:
         recentRequests.append({
             "id": h.id,
-            "time": h.created_at.strftime("%H:%M"),
+            "time": timezone.localtime(h.created_at).strftime("%H:%M"),
             "user": mask_email(h.user.email) if h.user.email else "unknown",
             "query": h.query_text,
             "results": _result_count(h),
