@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo-transparent.webp";
 import { ImageWithFallback } from "@/app/components/common/ImageWithFallback";
+import { useNamingFlow } from "@/app/providers/NamingFlowProvider";
 import type { MyPageSection, Screen } from "@/app/types";
 
 const MY_PAGE_MENU: { label: string; section: MyPageSection }[] = [
@@ -31,6 +32,15 @@ export function GNB({
   onLogout?: () => void;
 }) {
   const navigate = useNavigate();
+  const { exitFlow } = useNamingFlow();
+  // 마이페이지 드롭다운은 onNavigate(Screen 기반)로 표현 못 하는 쿼리스트링
+  // (?section=)이 필요해 react-router navigate를 직접 쓴다. processing/results/chat
+  // 오버레이가 떠 있는 동안에는 useScreenNav와 동일하게 exitFlow()를 먼저 호출해야
+  // RootLayout이 오버레이 대신 실제 라우트(마이페이지)를 렌더링한다.
+  const navigateToMyPage = (section?: MyPageSection) => {
+    exitFlow();
+    navigate(section ? `/mypage?section=${section}` : "/mypage");
+  };
   // 관리자 화면은 별도 번들(`/manage/`)로 분리되어 사용자 GNB에서 진입점을
   // 제공하지 않는다 — 경로 은닉이 보안 수단은 아니지만, 관리자 진입은 이제
   // 이 SPA의 라우트가 아니므로(사용자 번들에 admin 코드 0바이트) 여기서 연결할
@@ -74,7 +84,7 @@ export function GNB({
           item.submenu ? (
             <div key={item.label} className={`relative group flex items-center ${item.className ?? ""}`}>
               <button
-                onClick={() => navigate("/mypage")}
+                onClick={() => navigateToMyPage()}
                 className={`text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
                   isActive(item)
                     ? "text-primary font-medium"
@@ -89,7 +99,7 @@ export function GNB({
                     <button
                       key={subItem.section}
                       type="button"
-                      onClick={() => navigate(`/mypage?section=${subItem.section}`)}
+                      onClick={() => navigateToMyPage(subItem.section)}
                       className="block w-full px-4 py-2.5 text-left text-xs text-label hover:bg-muted hover:text-foreground focus:outline-none focus-visible:bg-muted focus-visible:text-foreground transition-colors"
                     >
                       {subItem.label}
