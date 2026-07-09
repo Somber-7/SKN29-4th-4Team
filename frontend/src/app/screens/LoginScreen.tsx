@@ -277,8 +277,15 @@ export function LoginScreen({
                 </p>
               </div>
 
-              {/* Form */}
-              <div className="relative z-10 bg-white border border-border p-7 space-y-5">
+              {/* Form — 실제 <form>으로 감싸야 비밀번호 입력이 폼에 소속되어 브라우저
+                  자동완성/비밀번호 저장이 정상 동작한다(안 그러면 DevTools가 경고를 띄운다) */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+                className="relative z-10 bg-white border border-border p-7 space-y-5"
+              >
                 <div>
                   <label htmlFor="login-username" className="block text-xs font-medium text-label mb-1.5">
                     아이디
@@ -322,9 +329,6 @@ export function LoginScreen({
                         setPassword(e.target.value);
                         setErrors((prev) => ({ ...prev, password: undefined }));
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSubmit();
-                      }}
                       placeholder="••••••••"
                       aria-invalid={!!errors.password}
                       className={`${inputClass(!!errors.password)} pr-10`}
@@ -365,7 +369,7 @@ export function LoginScreen({
                 </div>
 
                 <PrimaryButton
-                  onClick={handleSubmit}
+                  type="submit"
                   disabled={isSubmitting}
                   aria-busy={isSubmitting}
                   className="w-full px-4 py-3 inline-flex items-center justify-center gap-2"
@@ -374,7 +378,7 @@ export function LoginScreen({
                   {isSubmitting ? "로그인하는 중" : "로그인"}
                 </PrimaryButton>
 
-              </div>
+              </form>
 
               {/* Sign-up link */}
               <p className="relative z-10 text-center text-sm text-muted-foreground mt-6">
