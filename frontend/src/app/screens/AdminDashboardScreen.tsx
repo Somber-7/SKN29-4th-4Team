@@ -190,9 +190,9 @@ export function AdminDashboardScreen() {
                       <td className="px-4 py-3 text-xs text-ink whitespace-nowrap">{r.user}</td>
                       <td className="px-4 py-3 text-xs text-foreground break-keep min-w-[220px]">“{r.query}”</td>
                       <td className="px-4 py-3 text-xs text-ink tabular-nums">{r.results}개</td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex px-2 py-0.5 text-[11px] font-medium border ${
+                          className={`inline-flex px-2 py-0.5 text-[11px] font-medium border whitespace-nowrap ${
                             r.status === "완료"
                               ? "bg-pine/8 text-pine border-pine/25"
                               : "bg-hanji text-primary border-border-warm"

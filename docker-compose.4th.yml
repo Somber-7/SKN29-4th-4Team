@@ -26,6 +26,19 @@ services:
     expose:
       - "8000"
 
+  # 관리자 대시보드의 '오늘' 통계·주간 추이는 DailyMetric 캐시를 읽는데, 이를 채우는
+  # aggregate_daily_stats가 그동안 어디서도 스케줄링되지 않아 값이 항상 0이었다.
+  # django와 같은 이미지를 재사용해 하루 1회(+ 기동 시 즉시 1회) 배치를 돌린다.
+  cron:
+    build:
+      context: ./webapp
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - django
+    entrypoint: ["sh", "-c"]
+    command: ["while true; do python manage.py aggregate_daily_stats; sleep 86400; done"]
+
   fastapi:
     build:
       context: .

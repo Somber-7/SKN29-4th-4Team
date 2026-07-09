@@ -36,6 +36,16 @@ services:
     expose:
       - "8000"
 
+  cron:
+    build:
+      context: ./webapp
+    env_file: .env.local
+    depends_on:
+      - postgres-local
+      - django
+    entrypoint: ["sh", "-c"]
+    command: ["while true; do python manage.py aggregate_daily_stats; sleep 86400; done"]
+
   fastapi:
     build:
       context: .
