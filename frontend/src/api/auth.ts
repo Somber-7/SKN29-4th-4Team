@@ -63,6 +63,8 @@ export interface AuthApi {
   saveHistory(input: { query: string; request: NameRequest; results: NameResult[] }): Promise<void>;
   /** 작명 기록 하나의 저장된 결과 전체를 조회 — "결과 다시 보기" 전용, 재생성하지 않는다 */
   getHistoryDetail(id: number): Promise<HistoryDetail>;
+  /** 작명 기록 하나를 삭제 (되돌릴 수 없음) */
+  deleteHistory(id: number): Promise<void>;
   getInquiries(): Promise<UserInquiryEntry[]>;
   updateProfile(patch: ProfilePatch): Promise<AuthUser>;
   changePassword(input: { currentPassword: string; nextPassword: string }): Promise<void>;
@@ -137,6 +139,12 @@ const mockAdapter: AuthApi = {
       0,
     );
   },
+  async deleteHistory(id) {
+    await mockDelay(undefined, 300);
+    const idx = HISTORY_ENTRIES.findIndex((e) => e.id === id);
+    if (idx === -1) throw new ApiError({ status: 404, message: "작명 기록을 찾을 수 없습니다." });
+    HISTORY_ENTRIES.splice(idx, 1);
+  },
   async getInquiries() {
     const { INQUIRIES_ENTRIES } = await import("./mock/inquiries.mock");
     return mockDelay(INQUIRIES_ENTRIES, 0);
@@ -178,6 +186,7 @@ const realAdapter: AuthApi = {
   getHistory: () => apiClient.get<HistoryEntry[]>("/me/history"),
   saveHistory: (input) => apiClient.post<void>("/me/history", input),
   getHistoryDetail: (id) => apiClient.get<HistoryDetail>(`/me/history/${id}`),
+  deleteHistory: (id) => apiClient.delete<void>(`/me/history/${id}`),
   getInquiries: () => apiClient.get<UserInquiryEntry[]>("/me/inquiries"),
   updateProfile: (patch) => apiClient.patch<AuthUser>("/me", patch),
   changePassword: (input) => apiClient.post<void>("/me/change-password", input),

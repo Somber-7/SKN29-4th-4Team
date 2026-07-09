@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ApiError } from "@/api/client";
+import { authApi } from "@/api/auth";
 import type { HistoryEntry, Screen } from "@/app/types";
 import { useHistory } from "@/app/hooks/useHistory";
 import { PageHeader } from "@/app/components/common/PageHeader";
@@ -8,6 +12,20 @@ import { Reveal } from "@/app/components/common/Reveal";
 import { PrimaryButton, GhostButton } from "@/app/components/common/Button";
 import { Footer } from "@/app/components/layout/Footer";
 import { Skeleton } from "@/app/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog";
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
 
 type Filter = "전체" | "완료" | "진행 중";
 const FILTERS: Filter[] = ["전체", "완료", "진행 중"];
@@ -38,6 +56,27 @@ export function HistoryScreen({
   const [filter, setFilter] = useState<Filter>("전체");
   const { data: historyEntries = [] } = useHistory();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<HistoryEntry | null>(null);
+
+  const deleteHistory = useMutation({
+    mutationFn: (id: number) => authApi.deleteHistory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me", "history"] });
+    },
+  });
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteHistory.mutateAsync(deleteTarget.id);
+      toast.success("작명 기록이 삭제되었습니다.");
+    } catch (err) {
+      toast.error(errorMessage(err, "삭제에 실패했습니다."));
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
 
   // TODO: API 연동 — 현재는 로딩 시뮬레이션 후 더미 데이터 표시
   useEffect(() => {
@@ -150,18 +189,44 @@ export function HistoryScreen({
                     </p>
                   </div>
 
-                  <GhostButton
-                    onClick={() => navigate(`/history/${entry.id}`)}
-                    className="px-4 py-2.5 text-xs flex-shrink-0 w-full sm:w-auto"
-                  >
-                    결과 다시 보기
-                  </GhostButton>
+                  <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
+                    <GhostButton
+                      onClick={() => navigate(`/history/${entry.id}`)}
+                      className="px-4 py-2.5 text-xs flex-1 sm:flex-none"
+                    >
+                      결과 다시 보기
+                    </GhostButton>
+                    <GhostButton
+                      tone="destructive"
+                      onClick={() => setDeleteTarget(entry)}
+                      className="px-4 py-2.5 text-xs flex-shrink-0"
+                    >
+                      삭제
+                    </GhostButton>
+                  </div>
                 </Reveal>
               </li>
             ))}
           </ul>
         )}
       </main>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>작명 기록을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteTarget?.query}" 기록이 완전히 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleteHistory.isPending}>
+              {deleteHistory.isPending ? "삭제 중…" : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
        <Footer onNavigate={onNavigate} />
     </div>

@@ -296,14 +296,20 @@ def history_view(request):
 
 
 @api_login_required
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def history_detail_view(request, history_id):
-    """저장된 작명 기록 하나의 전체 결과(NameResult[])를 반환한다 — "결과 다시 보기"가
+    """GET: 저장된 작명 기록 하나의 전체 결과(NameResult[])를 반환한다 — "결과 다시 보기"가
     새 생성 요청을 다시 트리거하지 않고 그때 받은 결과를 그대로 보여주기 위함.
-    user=request.user로 스코프해 다른 회원의 기록 id를 추측해도 열람할 수 없게 한다."""
+    DELETE: 기록을 삭제한다(연쇄 삭제로 NamingResult도 함께 삭제됨).
+    두 경우 모두 user=request.user로 스코프해 다른 회원의 기록 id를 추측해도 접근할 수 없게 한다."""
     history = get_object_or_404(
         NamingHistory.objects.prefetch_related("result_set"), pk=history_id, user=request.user
     )
+
+    if request.method == "DELETE":
+        history.delete()
+        return HttpResponse(status=204)
+
     return JsonResponse({
         "id": history.id,
         "date": history.created_at.strftime("%Y.%m.%d"),
