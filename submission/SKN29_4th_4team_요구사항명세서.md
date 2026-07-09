@@ -208,7 +208,7 @@
 | IF-ME-002 | Django API | 작명 이력 조회/저장 | 세션, 요청/결과 | 이력 목록 또는 201 | 401/400 | 구현 확인 |
 | IF-SUP-001 | Django API | 공지/FAQ 조회 | 검색 조건 | 목록/상세 | 미존재 항목 오류 | 구현 확인 |
 | IF-SUP-002 | Django API | 문의 등록/조회 | 문의 내용, 세션 | 201 또는 목록 | 400/401 | 구현 확인 |
-| IF-LLM-001 | FastAPI API | 작명 생성 | NameRequest | NameResult[] | 400/429/502/504 | 구현 확인 |
+| IF-LLM-001 | FastAPI API | 작명 생성 | NameRequest | NameResult[] | 400/422/502/504 | 구현 확인 |
 | IF-LLM-003 | FastAPI API | 작명 보조 그래프 조회 | query/filter | nodes, links | 400/500 | 구현 확인 |
 | IF-ADMIN-001 | Admin API | 관리자 인증 | username, password | 관리자 정보, 권한 | 401/423/429 | 구현 확인 |
 | IF-ADMIN-002 | Admin API | 회원 관리 | 검색, 상태, 수정 payload | 회원 목록/상세 | 인증/권한/미존재 오류 | 구현 확인 |
