@@ -39,10 +39,10 @@
 | 구성 요소 | 역할 | 대표 구현 위치 |
 |---|---|---|
 | React/Vite 사용자 앱 | 랜딩, 로그인, 회원가입, 작명 입력, 결과, 이력, 마이페이지, 고객지원 화면 제공 | `frontend/src/app/` |
-| React/Vite 관리자 앱 | 관리자 로그인, 대시보드, 회원, 공지, 문의, FAQ, 계정, 통계, 설정 화면 제공 | `frontend/admin.html`, `frontend/src/app/AdminApp.tsx` |
+| React/Vite 관리자 앱 | 관리자 로그인, 대시보드, 회원, 공지, 문의, FAQ, 계정, 통계 조회, 설정 화면 제공 | `frontend/admin.html`, `frontend/src/app/AdminApp.tsx` |
 | Django | 세션 인증, 회원가입, 마이페이지, 작명 이력, 고객지원 API 제공 | `webapp/naming/views.py` |
 | Django Ninja | 관리자 전용 API, RBAC, 운영 데이터 관리 제공 | `webapp/naming/api.py`, `webapp/naming/auth.py` |
-| FastAPI | LLM 작명 생성, 자유 질의, 오행 그래프 데이터 API 제공 | `fastapi_app/main.py` |
+| FastAPI | LLM 작명 생성, 작명 보조 데이터 조회 API 제공 | `fastapi_app/main.py` |
 | LangGraph/MCP | RAG, 그래프 조회, 작명 검증 도구를 연결하는 작명 파이프라인 구성 | `src/graph/`, `src/mcp/` |
 | 통계 집계 배치 | 관리자 대시보드와 통계 화면의 일별 운영 지표 집계 | `webapp/naming/management/commands/aggregate_daily_stats.py`, `docker-compose.local.yml` |
 | PostgreSQL | 사용자, 작명 이력, 작명 결과, 관리자, 공지, FAQ, 문의, 통계 데이터 저장 | `webapp/naming/models.py` |
@@ -58,7 +58,7 @@
 | 로그인 사용자 | 작명 기능과 개인 이력 기능을 사용하는 사용자 | 조건 입력, 작명 생성, 결과 확인, 이력 조회, 마이페이지, 문의 내역 |
 | 관리자 ANALYST | 읽기 중심의 운영 현황을 확인하는 관리자 | 대시보드, 통계, 회원 조회 |
 | 관리자 ADMIN | 서비스 운영 데이터를 관리하는 관리자 | 회원 관리, 공지 관리, 문의 답변, FAQ 관리, 점검 설정 |
-| 관리자 SUPERADMIN | 최고 권한을 가진 관리자 | 관리자 계정 관리, 권한 변경, 감사 로그 조회 |
+| 최고관리자 | 최고 권한을 가진 관리자 | 관리자 계정 관리, 권한 변경, 감사 로그 조회 |
 
 관리자 인증은 일반 사용자 세션과 분리된 관리자 전용 세션을 사용하며, 최종 권한 판정은 서버의 관리자 API에서 수행한다.
 
@@ -80,38 +80,37 @@
 |---|---|---|---|---|---|---|---|
 | FR-AUTH-001 | 인증 | CSRF | 시스템은 세션 인증을 위해 CSRF 쿠키를 발급해야 한다. | High | Login, Signup | `GET /api/auth/csrf` | 구현 확인 |
 | FR-AUTH-002 | 인증 | 로그인 | 사용자는 아이디와 비밀번호로 로그인할 수 있어야 한다. | High | LoginScreen | `POST /api/auth/login` | 구현 확인 |
-| FR-AUTH-003 | 인증 | 계정 상태 검증 | 시스템은 정지, 승인 대기, 승인 거절 계정의 로그인을 제한해야 한다. | High | LoginScreen | `UserProfile.status`, `approval_status` | 구현 확인 |
+| FR-AUTH-003 | 인증 | 계정 상태 검증 | 시스템은 정지 된 계정의 로그인을 제한해야 한다. | High | LoginScreen | `UserProfile.status`, `approval_status` | 구현 확인 |
 | FR-AUTH-004 | 인증 | 로그아웃 | 로그인 사용자는 세션을 종료할 수 있어야 한다. | High | GNB, MyPage | `POST /api/auth/logout` | 구현 확인 |
 | FR-AUTH-005 | 인증 | 회원가입 | 사용자는 이름, 아이디, 이메일, 비밀번호, 약관 동의 정보를 입력해 가입할 수 있어야 한다. | High | SignupScreen | `POST /api/auth/signup`, `UserProfile` | 구현 확인 |
 | FR-AUTH-006 | 인증 | 이메일 중복 방지 | 시스템은 대소문자를 구분하지 않고 이메일 중복 가입을 방지해야 한다. | High | SignupScreen | `POST /api/auth/check-email`, email unique index | 구현 확인 |
 | FR-AUTH-007 | 인증 | 계정 찾기 | 사용자는 가입 정보를 기준으로 아이디를 찾거나 비밀번호 재설정을 요청할 수 있어야 한다. | Medium | LoginScreen | `find-username`, `forgot-password` | 구현 확인 |
 | FR-RBAC-001 | 권한 | 사용자 접근 제어 | 로그인 사용자 전용 화면은 비로그인 접근 시 로그인 화면으로 이동해야 한다. | High | Input, Results, History, MyPage | `RequireAuth`, `api_login_required` | 구현 확인 |
 | FR-RBAC-002 | 권한 | 관리자 접근 제어 | 관리자 화면과 관리자 API는 관리자 권한을 가진 사용자만 접근할 수 있어야 한다. | High | AdminApp | `AdminAuthProvider`, `require_role` | 구현 확인 |
-| FR-RBAC-003 | 권한 | 역할 기반 권한 | 관리자 기능은 ANALYST, ADMIN, SUPERADMIN 역할에 따라 접근 범위가 구분되어야 한다. | High | 관리자 전체 | `AdminProfile.Role`, permission map | 구현 확인 |
+| FR-RBAC-003 | 권한 | 역할 기반 권한 | 관리자 기능은 분석 관리자, 운영 관리자, 최고관리자 역할에 따라 접근 범위가 구분되어야 한다. | High | 관리자 전체 | `AdminProfile.Role`, permission map | 구현 확인 |
 | FR-LLM-001 | 작명 | 입력 방식 | 사용자는 자연어 입력 또는 상세 조건 입력 방식으로 작명 요청을 생성할 수 있어야 한다. | High | InputScreen | `NameRequest` | 구현 확인 |
 | FR-LLM-002 | 작명 | 이름 유형 | 사용자는 한자 이름과 순우리말 이름 중 작명 유형을 선택할 수 있어야 한다. | High | InputScreen | `nameType: hanja/korean` | 구현 확인 |
 | FR-LLM-003 | 작명 | 작명 생성 | 시스템은 입력 조건을 FastAPI 작명 API로 전달하고 추천 이름 목록을 반환해야 한다. | High | Processing, Results | `POST /naming-api/names/generate` | 구현 확인 |
 | FR-LLM-004 | 작명 | 결과 표시 | 시스템은 추천 이름의 한글, 한자, 의미, 오행, 해설 정보를 사용자에게 표시해야 한다. | High | ResultsScreen | `NameResult`, `NameCard` | 구현 확인 |
 | FR-LLM-005 | 작명 | 진행 상태 | 작명 생성 중에는 진행 화면과 단계별 상태를 제공해야 한다. | Medium | ProcessingScreen | loading state | 구현 확인 |
 | FR-LLM-006 | 작명 | 예외 처리 | 빈 입력, API 실패, 타임아웃, 생성 실패 상황은 사용자에게 이해 가능한 메시지로 안내해야 한다. | High | Input, Processing, Results | API error handler | 부분 검증 |
-| FR-LLM-007 | 작명 | 자유 질의 | 사용자는 작명 결과와 관련된 추가 질문을 할 수 있어야 한다. | Medium | Chat/Results | `POST /naming-api/ask` | 구현 확인 |
 | FR-HIST-001 | 이력 | 작명 이력 저장 | 로그인 사용자의 작명 요청과 추천 결과는 이력으로 저장되어야 한다. | High | ResultsScreen | `NamingHistory`, `NamingResult` | 구현 확인 |
 | FR-HIST-002 | 이력 | 이력 조회 | 로그인 사용자는 본인의 작명 이력 목록과 상세 결과를 조회할 수 있어야 한다. | High | History, MyPage | `GET /api/me/history` | 구현 확인 |
 | FR-MY-001 | 마이페이지 | 내 정보 조회 | 로그인 사용자는 본인 정보, 활동 요약, 최근 이력을 확인할 수 있어야 한다. | Medium | MyPageScreen | `GET /api/me` | 구현 확인 |
 | FR-MY-002 | 마이페이지 | 계정 관리 | 로그인 사용자는 비밀번호 변경, 문의 내역 조회, 회원 탈퇴 기능을 사용할 수 있어야 한다. | Medium | MyPageScreen | `/api/me/*` | 구현 확인 |
 | FR-SUP-001 | 고객지원 | 공지/FAQ | 사용자는 공지사항과 FAQ를 조회할 수 있어야 한다. | Medium | Notices, FAQ | `/api/support/notices`, `/api/support/faqs` | 구현 확인 |
 | FR-SUP-002 | 고객지원 | 문의 접수 | 사용자는 고객 문의를 등록하고 로그인 사용자는 문의 내역을 확인할 수 있어야 한다. | Medium | Contact, MyPage | `/api/support/contact`, `/api/me/inquiries` | 구현 확인 |
-| FR-GRAPH-001 | 인사이트 | 이름 트렌드 | 사용자는 이름 트렌드와 오행 그래프 정보를 확인할 수 있어야 한다. | Medium | InsightsScreen | `/api/insights`, `/naming-api/graph/ohaeng` | 구현 확인 |
+| FR-GRAPH-001 | 인사이트 | 이름 선호도와 작명 지식 | 사용자는 이름 선호도와 작명 지식을 확인할 수 있어야 한다. | Medium | InsightsScreen | `/api/insights` | 구현 확인 |
 | FR-ADMIN-001 | 관리자 | 관리자 로그인 | 관리자는 관리자 전용 화면에서 로그인할 수 있어야 한다. | High | AdminLoginScreen | `POST /api/admin/login` | 구현 확인 |
 | FR-ADMIN-002 | 관리자 | 대시보드 | 관리자는 사용자, 작명 요청, 문의, 시스템 상태를 요약한 대시보드를 확인할 수 있어야 한다. | High | AdminDashboard | `/api/admin/dashboard`, `/system/health` | 구현 확인 |
-| FR-ADMIN-003 | 관리자 | 회원 관리 | 관리자는 회원 목록, 상세 정보, 상태, 승인 여부, 활동 이력을 관리할 수 있어야 한다. | High | AdminUsers | `/api/admin/users/*` | 구현 확인 |
+| FR-ADMIN-003 | 관리자 | 회원 관리 | 관리자는 회원 목록, 상세 정보, 계정 상태, 활동 이력을 관리할 수 있어야 한다. | High | AdminUsers | `/api/admin/users/*` | 구현 확인 |
 | FR-ADMIN-004 | 관리자 | 공지 관리 | 관리자는 공지사항을 등록, 수정, 삭제, 게시 상태 변경할 수 있어야 한다. | Medium | AdminNotices | `/api/admin/notices/*` | 구현 확인 |
 | FR-ADMIN-005 | 관리자 | 문의 관리 | 관리자는 사용자 문의를 조회하고 답변 상태를 관리할 수 있어야 한다. | Medium | AdminInquiries | `/api/admin/inquiries/*` | 구현 확인 |
 | FR-ADMIN-006 | 관리자 | FAQ 관리 | 관리자는 FAQ와 FAQ 카테고리를 관리할 수 있어야 한다. | Medium | AdminFAQ | `/api/admin/faqs/*`, `/faq-categories/*` | 구현 확인 |
-| FR-ADMIN-007 | 관리자 | 관리자 계정 관리 | SUPERADMIN은 관리자 계정을 생성, 수정, 잠금 해제, 삭제할 수 있어야 한다. | High | AdminAccounts | `/api/admin/accounts/*` | 구현 확인 |
-| FR-ADMIN-008 | 관리자 | 통계 관리 | 관리자는 가입, 로그인, 작명 요청, 문의 통계를 조회할 수 있어야 한다. | Medium | AdminStats | `/api/admin/stats` | 구현 확인 |
+| FR-ADMIN-007 | 관리자 | 관리자 계정 관리 | 최고관리자는 관리자 계정을 생성, 수정, 잠금 해제, 삭제할 수 있어야 한다. | High | AdminAccounts | `/api/admin/accounts/*` | 구현 확인 |
+| FR-ADMIN-008 | 관리자 | 운영 통계 조회 | 관리자는 가입, 로그인, 작명 요청, 문의 등 운영 통계를 조회할 수 있어야 한다. | Medium | AdminStats | `/api/admin/stats` | 구현 확인 |
 | FR-ADMIN-009 | 관리자 | 운영 설정 | 관리자는 점검 모드 등 운영 설정을 조회하고 변경할 수 있어야 한다. | Medium | AdminSettings | `/api/admin/settings/maintenance` | 구현 확인 |
-| FR-ADMIN-010 | 관리자 | 감사 로그 | SUPERADMIN은 주요 관리자 작업 이력을 조회할 수 있어야 한다. | Medium | AdminAuditLog | `/api/admin/audit-logs` | 검증 확인 |
+| FR-ADMIN-010 | 관리자 | 감사 로그 | 감사 로그 조회 권한을 가진 관리자는 주요 관리자 작업 이력을 조회할 수 있어야 한다. | Medium | AdminAuditLog | `/api/admin/audit-logs` | 검증 확인 |
 | FR-ADMIN-011 | 관리자 | 운영 콘텐츠 확장 | 게시물, 사이트 문구, 문의 템플릿, 상세 API 사용량 관리는 향후 운영 확장 기능으로 관리한다. | Low | AdminContent | 관리자 API 확장 | 향후 검토 |
 
 ## 7. 비기능 요구사항
@@ -122,6 +121,7 @@
 | NFR-SEC-002 | 보안 | 관리자 API는 서버 측 역할 권한 검증을 통과한 요청만 처리해야 한다. | 권한별 401/403 테스트 | 구현 확인 |
 | NFR-SEC-003 | 보안 | 일반 사용자 세션과 관리자 세션은 분리되어야 한다. | 쿠키 및 API 접근 검증 | 구현 확인 |
 | NFR-SEC-004 | 개인정보 | 약관, 개인정보 동의, 접속 이력 등 개인정보 처리 이력은 추적 가능해야 한다. | DB 모델 및 가입 흐름 검증 | 구현 확인 |
+| NFR-SEC-005 | 보안 | 작명 API와 관리자 로그인은 과도한 요청을 제한하기 위해 Nginx 레이트리밋을 적용해야 한다. | Nginx 설정 확인 | 구현 확인 |
 | NFR-API-001 | 안정성 | Django API와 FastAPI API는 일관된 JSON 응답 형식을 제공해야 한다. | API smoke test | 검증 확인 |
 | NFR-API-002 | 안정성 | 서버 오류, 입력 오류, 외부 LLM 실패는 사용자 화면에서 처리 가능한 오류로 반환되어야 한다. | 실패 케이스 테스트 | 부분 검증 |
 | NFR-UI-001 | 사용성 | 주요 사용자 화면과 관리자 화면은 모바일, 태블릿, 데스크톱에서 레이아웃이 유지되어야 한다. | 브라우저 반응형 확인 | 부분 검증 |
@@ -160,9 +160,9 @@
 | DATA-FAQ | FAQ | 질문, 답변, 카테고리, 표시 순서, 활성 상태 | FR-SUP, FR-ADMIN |
 | DATA-INQUIRY | 문의 | 문의자, 연락처, 제목, 본문, 답변, 처리 상태 | FR-SUP, FR-ADMIN |
 | DATA-METRIC | 일별 통계 | 가입, 로그인, 작명 요청, 문의, 소스 분포 통계 | FR-ADMIN-008 |
-| DATA-TREND | 이름 트렌드 | 연도, 성별, 순위, 이름, 트렌드 기사 데이터 | FR-GRAPH |
+| DATA-TREND | 이름 선호도와 작명 지식 | 연도, 성별, 순위, 이름, 트렌드 기사 데이터 | FR-GRAPH |
 | DATA-RAG | 검색 데이터 | 작명 근거 생성을 위한 내부 문서 벡터 데이터 | FR-LLM |
-| DATA-GRAPH | 그래프 데이터 | 한자, 오행, 관계 기반 작명 보조 데이터 | FR-GRAPH |
+| DATA-GRAPH | 작명 보조 그래프 데이터 | 한자, 오행, 관계 기반 작명 보조 데이터 | FR-LLM |
 
 ## 10. 화면 요구사항
 
@@ -208,10 +208,9 @@
 | IF-ME-002 | Django API | 작명 이력 조회/저장 | 세션, 요청/결과 | 이력 목록 또는 201 | 401/400 | 구현 확인 |
 | IF-SUP-001 | Django API | 공지/FAQ 조회 | 검색 조건 | 목록/상세 | 미존재 항목 오류 | 구현 확인 |
 | IF-SUP-002 | Django API | 문의 등록/조회 | 문의 내용, 세션 | 201 또는 목록 | 400/401 | 구현 확인 |
-| IF-LLM-001 | FastAPI API | 작명 생성 | NameRequest | NameResult[] | 400/502/504 | 구현 확인 |
-| IF-LLM-002 | FastAPI API | 자유 질의 | query | answer | 400/502 | 구현 확인 |
-| IF-LLM-003 | FastAPI API | 오행 그래프 | query/filter | nodes, links | 400/500 | 구현 확인 |
-| IF-ADMIN-001 | Admin API | 관리자 인증 | username, password | 관리자 정보, 권한 | 401/423 | 구현 확인 |
+| IF-LLM-001 | FastAPI API | 작명 생성 | NameRequest | NameResult[] | 400/429/502/504 | 구현 확인 |
+| IF-LLM-003 | FastAPI API | 작명 보조 그래프 조회 | query/filter | nodes, links | 400/500 | 구현 확인 |
+| IF-ADMIN-001 | Admin API | 관리자 인증 | username, password | 관리자 정보, 권한 | 401/423/429 | 구현 확인 |
 | IF-ADMIN-002 | Admin API | 회원 관리 | 검색, 상태, 수정 payload | 회원 목록/상세 | 인증/권한/미존재 오류 | 구현 확인 |
 | IF-ADMIN-003 | Admin API | 공지/FAQ/문의 관리 | 콘텐츠 payload | 목록/상세/수정 결과 | 인증/권한/미존재 오류 | 구현 확인 |
 | IF-ADMIN-004 | Admin API | 관리자 계정 관리 | 계정 payload | 계정 목록/상세 | 인증/권한/미존재 오류 | 구현 확인 |
@@ -220,7 +219,7 @@
 | IF-ADMIN-007 | Admin API | 감사 로그 | 검색 조건 | 감사 로그 목록 | 401/403 | 검증 확인 |
 | IF-NGINX-001 | Nginx | 사용자 앱 라우팅 | `/` 하위 경로 | 사용자 SPA | 잘못된 경로 안내 | 구현 확인 |
 | IF-NGINX-002 | Nginx | 관리자 앱 라우팅 | `/manage/` 하위 경로 | 관리자 SPA | 잘못된 경로 안내 | 구현 확인 |
-| IF-NGINX-003 | Nginx | API 프록시 | `/api/`, `/naming-api/` | Django/FastAPI 응답 | upstream error | 구현 확인 |
+| IF-NGINX-003 | Nginx | API 프록시 | `/api/`, `/naming-api/` | Django/FastAPI 응답 | upstream error/429 | 구현 확인 |
 
 ## 12. 사용자 시나리오
 
@@ -230,7 +229,7 @@
 |---|---|---|---|
 | 1 | 사용자가 회원가입 화면을 연다. | 회원가입 폼과 약관 동의 항목을 표시한다. | FR-AUTH-005 |
 | 2 | 사용자가 가입 정보를 입력한다. | 아이디, 이메일, 비밀번호, 약관 동의를 검증한다. | FR-AUTH-005, FR-AUTH-006 |
-| 3 | 사용자가 로그인을 시도한다. | 계정 상태와 승인 상태를 확인하고 세션을 발급한다. | FR-AUTH-002, FR-AUTH-003 |
+| 3 | 사용자가 로그인을 시도한다. | 계정 상태를 확인하고 세션을 발급한다. | FR-AUTH-002, FR-AUTH-003 |
 | 4 | 사용자가 로그아웃한다. | 세션을 종료하고 공개 화면으로 이동한다. | FR-AUTH-004 |
 
 ### 12.2 LLM 작명 생성
@@ -260,14 +259,14 @@
 | 2 | 관리자가 로그인한다. | 관리자 세션과 역할별 권한 목록을 반환한다. | FR-RBAC-002, FR-RBAC-003 |
 | 3 | 관리자가 대시보드를 확인한다. | 운영 지표와 시스템 상태를 표시한다. | FR-ADMIN-002 |
 | 4 | 관리자가 회원, 공지, 문의, FAQ를 관리한다. | 권한에 따라 조회, 등록, 수정, 삭제 기능을 제공한다. | FR-ADMIN-003~006 |
-| 5 | SUPERADMIN이 계정을 관리한다. | 관리자 계정과 역할 변경을 처리하고 감사 이력을 남긴다. | FR-ADMIN-007, FR-ADMIN-010 |
+| 5 | 최고관리자가 계정을 관리한다. | 관리자 계정과 역할 변경을 처리하고 감사 이력을 남긴다. | FR-ADMIN-007, FR-ADMIN-010 |
 
 ## 13. 테스트 요구사항
 
 | 테스트 ID | 테스트 대상 | 테스트 내용 | 관련 요구사항 | 상태 |
 |---|---|---|---|---|
 | TC-AUTH-001 | 회원가입 | 정상 가입, 중복 아이디/이메일, 약관 미동의, 비밀번호 정책 검증 | FR-AUTH-005, FR-AUTH-006 | 구현 확인 |
-| TC-AUTH-002 | 로그인 | 정상 로그인, 비밀번호 오류, 정지/승인 대기/거절 계정 로그인 제한 검증 | FR-AUTH-002, FR-AUTH-003 | 구현 확인 |
+| TC-AUTH-002 | 로그인 | 정상 로그인, 비밀번호 오류, 정지 또는 미승인 계정 로그인 제한 검증 | FR-AUTH-002, FR-AUTH-003 | 구현 확인 |
 | TC-AUTH-003 | 세션 | 로그아웃, 비로그인 접근 제어, 내 정보 조회 검증 | FR-AUTH-004, FR-RBAC-001 | 구현 확인 |
 | TC-LLM-001 | 작명 생성 | 한자/순우리말 작명 요청과 결과 렌더링 검증 | FR-LLM-001~004 | 부분 검증 |
 | TC-LLM-002 | 작명 예외 | 빈 입력, 외부 API 실패, 타임아웃, 재시도 흐름 검증 | FR-LLM-006 | 부분 검증 |
@@ -277,7 +276,7 @@
 | TC-ADMIN-002 | 관리자 운영 | 회원, 공지, 문의, FAQ, 계정, 설정 관리 검증 | FR-ADMIN-003~009 | 구현 확인 |
 | TC-ADMIN-003 | 관리자 감사 | 관리자 주요 작업의 감사 로그 기록과 조회 검증 | FR-ADMIN-010 | 검증 확인 |
 | TC-UI-001 | 반응형 UI | 사용자/관리자 주요 화면의 모바일, 태블릿, 데스크톱 레이아웃 검증 | NFR-UI-001 | 부분 검증 |
-| TC-DEP-001 | 배포 | Docker, Nginx, Django, FastAPI, DB 연결과 주요 경로 응답 검증 | NFR-DEP | 검증 확인 |
+| TC-DEP-001 | 배포 | Docker, Nginx, Django, FastAPI, DB 연결과 주요 경로 응답 및 레이트리밋 설정 검증 | NFR-DEP, NFR-SEC-005 | 검증 확인 |
 | TC-TRACE-001 | 추적성 | 요구사항 ID가 화면, API, 데이터, 테스트 항목과 연결되는지 확인 | NFR-TRACE-001 | 구현 확인 |
 
 ## 14. 요구사항 추적표
@@ -300,7 +299,7 @@
 | FR-HIST-002 | History, MyPage | `/api/me/history` | NamingHistory, NamingResult | TC-HIST-001 |
 | FR-SUP-001 | Notices, FAQ | `/api/support/notices`, `/api/support/faqs` | Notice, FAQ | TC-SUP-001 |
 | FR-SUP-002 | Contact, MyPage | `/api/support/contact`, `/api/me/inquiries` | ContactInquiry | TC-SUP-001 |
-| FR-GRAPH-001 | InsightsScreen | `/api/insights`, `/naming-api/graph/ohaeng` | NameTrendStat, TrendArticle, graph data | TC-LLM-001 |
+| FR-GRAPH-001 | InsightsScreen | `/api/insights` | NameTrendStat, TrendArticle | TC-LLM-001 |
 | FR-ADMIN-001 | AdminLogin | `/api/admin/login` | AdminProfile | TC-ADMIN-001 |
 | FR-ADMIN-002 | AdminDashboard | `/api/admin/dashboard`, `/system/health` | DailyMetric | TC-ADMIN-002 |
 | FR-ADMIN-003 | AdminUsers | `/api/admin/users/*` | User, UserProfile, LoginHistory | TC-ADMIN-002 |
@@ -312,6 +311,7 @@
 | FR-ADMIN-009 | AdminSettings | `/api/admin/settings/maintenance` | Setting | TC-ADMIN-002 |
 | FR-ADMIN-010 | AdminAuditLog | `/api/admin/audit-logs` | AdminAuditLog | TC-ADMIN-003 |
 | NFR-UI-001 | 전체 화면 | responsive layout | N/A | TC-UI-001 |
+| NFR-SEC-005 | Nginx/API 경계 | `limit_req` naming/admin_login | N/A | TC-DEP-001 |
 | NFR-DEP-001 | 배포 환경 | Docker Compose | 컨테이너/볼륨 | TC-DEP-001 |
 | NFR-TRACE-001 | 전체 산출물 | 요구사항 ID 체계 | N/A | TC-TRACE-001 |
 
