@@ -105,7 +105,7 @@ export function NameCard({ result, variant, rank, onOpenDetail }: NameCardProps)
           ? `${isKoreanResult ? fullHangul : `${fullHanja} ${fullHangul}`} 상세 정보 보기`
           : undefined
       }
-      className={`relative bg-white border border-border-warm rounded-2xl p-5 sm:p-6 ${onOpenDetail ? "pr-10 sm:pr-12" : ""} grid grid-cols-1 lg:grid-cols-[12rem_minmax(0,1fr)] gap-x-4 gap-y-3 lg:items-start transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-border/50 hover:shadow-[0_16px_36px_rgba(46,30,8,0.08)] ${
+      className={`relative bg-white border border-border-warm rounded-2xl p-5 sm:p-6 ${onOpenDetail ? "pr-10 sm:pr-12" : ""} grid grid-cols-1 lg:grid-cols-[12rem_minmax(0,1fr)] gap-x-4 gap-y-3 lg:items-center transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-border/50 hover:shadow-[0_16px_36px_rgba(46,30,8,0.08)] ${
         onOpenDetail ? "cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary" : ""
       }`}
       style={{ animation: "mg-fadein 0.35s ease forwards" }}
@@ -136,23 +136,24 @@ export function NameCard({ result, variant, rank, onOpenDetail }: NameCardProps)
 
       {/* Per-character breakdown (성 포함) — Grid 2열(가변 폭). 태블릿 폭(lg 미만)에서는 카드가
           이름만 보여주는 최소 정보 형태로 접히도록 이 블록 자체를 숨기고, 상세 내역은 클릭 시
-          모달에서 확인한다. 글자마다 한 줄씩 세로로 쌓아(flex-col) 항상 카드 전체 폭을 쓰게
-          하고, 칩 내부도 "글자(음)" / "뜻 · 획수 · 오행" 두 줄로 나눠 좁은 폭에 욱여넣다 뜻풀이가
-          잘려 보이는 일이 없게 한다. 순우리말은 이름 부분에 한자 풀이가 없어 성씨만 표시된다
-          (ruby에 음절 자리표시자가 채워져 와도 순우리말로 판별되면 표시하지 않는다 — 획수 0 등
-          무의미한 값이라). */}
-      <div className="hidden lg:flex flex-col gap-1.5 lg:border-l lg:border-muted lg:pl-4 min-w-0">
+          모달에서 확인한다. 이제 3번째 컬럼(81수리 요약)이 없어져 이 블록이 카드 나머지 폭을
+          전부 쓰므로, 성+이름 글자 칩을 세로로 쌓지 않고 한 줄에 가로로 나란히 배치한다(각
+          칩은 "글자(음) · 뜻 · 획수 · 오행"을 한 줄로 붙여 폭을 압축). 폭이 부족한 경우에만
+          flex-wrap으로 다음 줄로 넘어간다. 순우리말은 이름 부분에 한자 풀이가 없어 성씨만
+          표시된다(ruby에 음절 자리표시자가 채워져 와도 순우리말로 판별되면 표시하지 않는다 —
+          획수 0 등 무의미한 값이라). */}
+      <div className="hidden lg:flex flex-row flex-wrap items-center justify-center gap-1.5 lg:border-l lg:border-muted lg:pl-4 min-w-0">
         {(isKoreanResult ? [result.lastName] : [result.lastName, ...result.ruby]).map((c, i) => (
           <div
             key={i}
-            className="px-2.5 py-1.5 text-caption bg-hanji/50 border border-border-warm/60 rounded-lg"
+            className="flex-1 flex items-baseline justify-center gap-2 px-4 py-3 whitespace-nowrap text-caption bg-hanji/50 border border-border-warm/60 rounded-lg"
           >
-            <span className="text-xs font-medium text-secondary-foreground">
+            <span className="text-sm font-medium text-secondary-foreground flex-shrink-0">
               {c.char}({c.reading})
             </span>
-            <p className="text-[11px] break-keep">
+            <span className="text-xs">
               {c.meaning} · {c.strokes}획 · {c.element}行
-            </p>
+            </span>
           </div>
         ))}
         {isKoreanResult && (
