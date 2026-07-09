@@ -87,15 +87,26 @@ except Exception:
 
 
 _OHAENG_HJ_MAP = {"木": "목", "火": "화", "土": "토", "金": "금", "水": "수"}
+# (한자, 순우리말, 한글음) — "물(水) 기운"처럼 순우리말 뒤에 한자를 병기하는 흔한
+# 표현(홈 화면 예시 문구 그대로)까지 인식하려면 셋을 함께 알아야 한다.
+_OHAENG_DEFS = [("木", "나무", "목"), ("火", "불", "화"), ("土", "흙", "토"), ("金", "쇠", "금"), ("水", "물", "수")]
 
 
 def _extract_query_ohaeng_list(query: str) -> list[str]:
     """쿼리의 오행 표현을 전부 추출합니다 (다중 선택 지원, 순서 보존 중복 제거).
-    '木 오행'처럼 공백이 끼어도 매칭합니다. lookbehind는 '획수 오행' 같은 오탐 방지용."""
+    '木 오행'처럼 공백이 끼어도, '화 기운'·'화행'처럼 오행 대신 기운/행으로 표현해도,
+    '불 기운'·'물(水) 기운'처럼 순우리말(+한자 병기)로 표현해도 매칭합니다(프론트
+    nameQueryParser.ts의 인식 조건 표시와 실제 필터링이 어긋나지 않도록 동일한
+    표현을 인식). 한자·한글음 패턴은 '오행/기운/행' 접미사가 반드시 붙어야 매칭
+    하는데, 이는 성씨 한자 자동 주입(예: 김씨→金)이 오행 한자와 겹쳐 오탐하는 것을
+    막기 위함이라 한자 단독 등장만으로는 매칭하지 않는다."""
     found: list[str] = []
-    for m in re.finditer(r'(?<![一-鿿])([木火土金水])\s*오행', query):
+    for hj, word, ko in _OHAENG_DEFS:
+        if re.search(rf'{word}(?:\({hj}\))?\s*(기운|오행)', query):
+            found.append(ko)
+    for m in re.finditer(r'(?<![一-鿿])([木火土金水])\s*(오행|기운|행(?![가-힣]))', query):
         found.append(_OHAENG_HJ_MAP[m.group(1)])
-    for m in re.finditer(r'(?<![가-힣])(목|화|토|금|수)\s*오행', query):
+    for m in re.finditer(r'(?<![가-힣])(목|화|토|금|수)\s*(오행|기운|행(?![가-힣]))', query):
         found.append(m.group(1))
     return list(dict.fromkeys(found))
 
